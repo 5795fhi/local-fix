@@ -1,0 +1,95 @@
+# =========================
+# v0 sandbox internal files
+# =========================
+__v0_runtime_loader.js
+__v0_devtools.tsx
+__v0_jsx-dev-runtime.ts
+.snowflake/
+.v0-trash/
+.vercel/
+
+# =========================
+# Node / Next.js
+# =========================
+node_modules/
+.next/
+.DS_Store
+
+# =========================
+# Python
+# =========================
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Python packaging
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+pip-wheel-metadata/
+
+# =========================
+# Django
+# =========================
+
+# Local Django settings
+local_settings.py
+
+# SQLite database
+*.sqlite3
+*.sqlite3-journal
+
+# Django collected static files
+staticfiles/
+static_collected/
+
+# Media/uploads generated locally
+media/
+
+# Django migrations
+# Uncomment if you intentionally don't want to commit migrations:
+# */migrations/*.py
+# !*/migrations/__init__.py
+
+# =========================
+# Environment variables
+# =========================
+.env
+.env.*
+.env*.local
+
+# =========================
+# Logs
+# =========================
+*.log*
+
+# =========================
+# IDE / Editor
+# =========================
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# =========================
+# OS
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# Documentation / Generated files
+# =========================
+*.docx
+LocalFix_Complete_Project_Generation_Guide_v2.docx
+
+
+.freebuff*
