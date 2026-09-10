@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Book {{ provider.user.display_name }}{% endblock %}
+{% block content %}
+<div class="page">
+  <div class="container">
+    <div class="page-head reveal revealed">
+      <span class="eyebrow">New booking</span>
+      <h1>Request a booking</h1>
+      <p>You're booking <b>{{ provider.user.display_name }}</b> — {{ provider.headline|default:"verified professional" }}</p>
+    </div>
+
+    <div class="split">
+      <div class="card">
+        <form method="post" novalidate>
+          {% csrf_token %}
+          {% if form.non_field_errors %}<div class="form-alert">{% for e in form.non_field_errors %}{{ e }}{% endfor %}</div>{% endif %}
+
+          <div class="field">
+            <label for="{{ form.category.id_for_label }}">Service needed</label>
+            {{ form.category }}{{ form.category.errors }}
+            <div class="helptext">Only services this pro offers are listed.</div>
+          </div>
+
+          <div class="field">
+            <label for="{{ form.description.id_for_label }}">Describe the job</label>
+            {{ form.description }}{{ form.description.errors }}
+            <div class="helptext">The more detail you give, the more accurate your quote will be.</div>
+          </div>
+
+          <div class="field">
+            <label for="{{ form.address.id_for_label }}">Service address</label>
+            {{ form.address }}{{ form.address.errors }}
+          </div>
+
+          <div class="field">
+            <label for="{{ form.scheduled_for.id_for_label }}">Preferred date &amp; time</label>
+            {{ form.scheduled_for }}{{ form.scheduled_for.errors }}
+            <div class="helptext">Availability is verified before the request is confirmed.</div>
+          </div>
+
+          <button class="btn btn-primary btn-block btn-lg btn-sheen" type="submit">Send booking request</button>
+        </form>
+      </div>
+
+      <aside>
+        <div class="card">
+          <h3>Booking summary</h3>
+          <div class="kv"><span class="k">Professional</span><b>{{ provider.user.display_name }}</b></div>
+          <div class="kv"><span class="k">Area</span><b>{{ provider.service_area|default:"Local" }}</b></div>
+          <div class="kv"><span class="k">Hourly rate</span><b>{{ provider.hourly_rate }}</b></div>
+          <div class="kv"><span class="k">Starting price</span><b>from {{ provider.hourly_rate }}/hr</b></div>
+          <div class="auth-divider">what happens next</div>
+          <ol class="mini-steps">
+            <li>The pro reviews your request and availability.</li>
+            <li>You receive a firm quote on acceptance.</li>
+            <li>Payment is only due after the job is done.</li>
+          </ol>
+        </div>
+      </aside>
+    </div>
+  </div>
+</div>
+{% endblock %}

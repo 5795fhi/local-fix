@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Notifications{% endblock %}
+{% block content %}
+<div class="page">
+  <div class="container container-narrow">
+    <div class="page-head row reveal revealed">
+      <div>
+        <span class="eyebrow">Inbox</span>
+        <h1>Notifications</h1>
+        <p>{{ unread_notifications }} unread</p>
+      </div>
+      {% if unread_notifications %}
+      <form method="post" action="{% url 'notifications:mark_all_read' %}">
+        {% csrf_token %}
+        <button class="btn btn-ghost btn-sm" type="submit">Mark all read</button>
+      </form>
+      {% endif %}
+    </div>
+
+    <div class="panel">
+      {% for n in notifications %}
+      <a class="notif {% if not n.is_read %}unread{% endif %}" href="{% url 'notifications:open' n.pk %}">
+        <div class="n-ico" aria-hidden="true">
+          {% if "accept" in n.title|lower or "started" in n.title|lower %}✅
+          {% elif "payment" in n.title|lower %}💳
+          {% elif "review" in n.title|lower %}⭐
+          {% elif "cancel" in n.title|lower or "declin" in n.title|lower %}🚫
+          {% elif "complaint" in n.title|lower %}📮
+          {% elif "welcome" in n.title|lower %}👋
+          {% else %}🔔{% endif %}
+        </div>
+        <div class="grow">
+          <div class="n-title">{{ n.title }}</div>
+          {% if n.body %}<div class="n-body">{{ n.body }}</div>{% endif %}
+          <time>{{ n.created_at|date:"M j, Y · g:i A" }}</time>
+        </div>
+        {% if not n.is_read %}<span class="n-dot" title="Unread"></span>{% endif %}
+      </a>
+      {% empty %}
+      <div class="empty">
+        <span class="empty-ico">🔔</span>
+        <b>You're all caught up.</b><br>
+        Booking updates, payments and replies will appear here.
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

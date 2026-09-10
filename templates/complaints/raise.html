@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Raise a complaint{% endblock %}
+{% block content %}
+<div class="page">
+  <div class="container container-narrow">
+    <div class="page-head reveal revealed">
+      <span class="eyebrow">Support</span>
+      <h1>Raise a complaint</h1>
+      <p>Something went wrong? Tell us and our team will step in.</p>
+    </div>
+
+    <div class="card">
+      <form method="post" novalidate>
+        {% csrf_token %}
+        {% if form.non_field_errors %}<div class="form-alert">{% for e in form.non_field_errors %}{{ e }}{% endfor %}</div>{% endif %}
+
+        <div class="field">
+          <label for="{{ form.booking.id_for_label }}">Related booking (optional)</label>
+          {{ form.booking }}{{ form.booking.errors }}
+        </div>
+
+        <div class="field">
+          <label for="{{ form.subject.id_for_label }}">Subject</label>
+          {{ form.subject }}{{ form.subject.errors }}
+        </div>
+
+        <div class="field">
+          <label for="{{ form.description.id_for_label }}">What happened?</label>
+          {{ form.description }}{{ form.description.errors }}
+          <div class="helptext">Include what you expected and what actually happened — it helps us resolve faster.</div>
+        </div>
+
+        <button class="btn btn-primary btn-block" type="submit">Submit complaint</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<div class="page">
+  <div class="container">
+    <div class="page-head row reveal revealed">
+      <div>
+        <span class="eyebrow">Your home base</span>
+        <h1>Hey {{ user.first_name|default:user.display_name }} 👋</h1>
+        <p>Here's what's happening with your bookings.</p>
+      </div>
+      <a href="{% url 'services:provider_directory' %}" class="btn btn-primary btn-sheen">+ Book a pro</a>
+    </div>
+
+    <div class="stat-grid stagger">
+      <div class="stat-card">
+        <span class="stat-ico" aria-hidden="true">📅</span>
+        <div class="label">Active bookings</div>
+        <div class="value" data-count="{{ active_bookings|length }}">0</div>
+        <div class="hint">requested → in progress</div>
+      </div>
+      <div class="stat-card">
+        <span class="stat-ico" aria-hidden="true">💳</span>
+        <div class="label">Awaiting payment</div>
+        <div class="value" data-count="{{ awaiting_payment|length }}">0</div>
+        <div class="hint">completed, unpaid</div>
+      </div>
+      <div class="stat-card accent">
+        <span class="stat-ico" aria-hidden="true">💰</span>
+        <div class="label">Total spent</div>
+        <div class="value" data-count="{{ total_spent|stringformat:'s' }}">0</div>
+        <div class="hint">across paid jobs</div>
+      </div>
+      <div class="stat-card">
+        <span class="stat-ico" aria-hidden="true">⭐</span>
+        <div class="label">Reviews written</div>
+        <div class="value" data-count="{{ review_count|default:0 }}">0</div>
+        <div class="hint">thanks for the feedback</div>
+      </div>
+    </div>
+
+    {% if awaiting_payment %}
+    <div class="pay-prompt mb-2" style="padding:1.1rem 1.3rem">
+      <b>⏳ {{ awaiting_payment|length }} completed job{{ awaiting_payment|length|pluralize }} awaiting payment</b>
+      <div class="flex gap-sm wrap mt-1">
+        {% for b in awaiting_payment %}<a href="{% url 'payments:checkout' b.pk %}" class="btn btn-primary btn-sm">Pay booking #{{ b.pk }} · {{ b.quoted_price }}</a>{% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="split">
+      <div>
+        <div class="panel">
+          <div class="panel-head">
+            <h3>Recent bookings</h3>
+            <a href="{% url 'bookings:list' %}" class="btn btn-ghost btn-sm">All bookings →</a>
+          </div>
+          {% for b in recent_bookings %}
+          <div class="list-row">
+            <div class="lead">
+              <b>{{ b.category }} · {{ b.provider.display_name }}</b>
+              <span>🗓 {{ b.scheduled_for|date:"D, M j · g:i A" }} &nbsp;·&nbsp; 📍 {{ b.address|truncatechars:38 }}</span>
+            </div>
+            <div class="flex center gap-sm">
+              <span class="badge badge-{{ b.status }}">{{ b.get_status_display }}</span>
+              <a href="{% url 'bookings:detail' b.pk %}" class="btn btn-ghost btn-sm">View</a>
+            </div>
+          </div>
+          {% empty %}
+          <div class="empty">
+            <span class="empty-ico">🧰</span>
+            <b>No bookings yet.</b><br>
+            <a href="{% url 'services:provider_directory' %}" style="color:var(--brand-strong);font-weight:700">Find a professional</a> and book your first job.
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <aside>
+        <div class="panel">
+          <div class="panel-head"><h3>Browse services</h3></div>
+          <div class="panel-body">
+            <div class="chips">
+              {% for c in categories %}
+              <a class="chip" href="{% url 'services:provider_directory' %}?category={{ c.slug }}">{{ c.icon_emoji }} {{ c.name }}</a>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-body">
+            <b>🤖 Not sure who to book?</b>
+            <p class="text-muted mt-1" style="font-size:.88rem">Describe the problem and the assistant points you to the right category.</p>
+            <a href="{% url 'assistant:chat' %}" class="btn btn-dark btn-block">Ask the assistant</a>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-body">
+            <b>📮 Something wrong?</b>
+            <p class="text-muted mt-1" style="font-size:.88rem">Raise a complaint and our team will review it.</p>
+            <a href="{% url 'complaints:raise' %}" class="btn btn-ghost btn-block">Report an issue</a>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+</div>
+{% endblock %}

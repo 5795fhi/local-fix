@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}My complaints{% endblock %}
+{% block content %}
+<div class="page">
+  <div class="container">
+    <div class="page-head row reveal revealed">
+      <div>
+        <span class="eyebrow">Support</span>
+        <h1>My complaints</h1>
+        <p>{{ complaints|length }} filed</p>
+      </div>
+      <a href="{% url 'complaints:raise' %}" class="btn btn-primary">+ New complaint</a>
+    </div>
+
+    <div class="panel">
+      {% for c in complaints %}
+      <div class="list-row">
+        <div class="lead">
+          <b>{{ c.subject }}</b>
+          <span>{{ c.description|truncatewords:16 }}{% if c.booking %} · Booking #{{ c.booking.pk }}{% endif %}</span>
+          <small class="text-muted">{{ c.created_at|date:"M j, Y" }}</small>
+        </div>
+        <span class="badge badge-{{ c.status }}">{{ c.get_status_display }}</span>
+      </div>
+      {% empty %}
+      <div class="empty">
+        <span class="empty-ico">📮</span>
+        <b>No complaints filed.</b><br>That's usually a good sign — but we're here if you need us.
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

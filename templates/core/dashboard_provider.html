@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block title %}Provider dashboard{% endblock %}
+{% block content %}
+<div class="page">
+  <div class="container">
+    <div class="page-head row reveal revealed">
+      <div>
+        <span class="eyebrow">Pro workspace</span>
+        <h1>Jobs dashboard</h1>
+        <p>Requests, active work and earnings at a glance.</p>
+      </div>
+      <div class="flex gap-sm wrap">
+        <a href="{% url 'accounts:profile' %}" class="btn btn-ghost">⚙️ Edit profile &amp; availability</a>
+      </div>
+    </div>
+
+    {% if profile and not profile.is_approved %}
+    <div class="pending-banner mb-2">
+      <b>⏳ Your profile is pending approval.</b>
+      <p class="mb-0 text-muted">An administrator reviews new pros before they appear in the directory. You can complete your profile meanwhile.</p>
+    </div>
+    {% endif %}
+
+    <div class="stat-grid stagger">
+      <div class="stat-card">
+        <span class="stat-ico" aria-hidden="true">🔔</span>
+        <div class="label">New requests</div>
+        <div class="value" data-count="{{ pending_requests|length }}">0</div>
+        <div class="hint">waiting on you</div>
+      </div>
+      <div class="stat-card">
+        <span class="stat-ico" aria-hidden="true">🔧</span>
+        <div class="label">Active jobs</div>
+        <div class="value" data-count="{{ active_jobs|length }}">0</div>
+        <div class="hint">accepted or in progress</div>
+      </div>
+      <div class="stat-card">
+        <span class="stat-ico" aria-hidden="true">✅</span>
+        <div class="label">Completed</div>
+        <div class="value" data-count="{{ completed_count }}">0</div>
+        <div class="hint">all-time jobs</div>
+      </div>
+      <div class="stat-card accent">
+        <span class="stat-ico" aria-hidden="true">💰</span>
+        <div class="label">Total earnings</div>
+        <div class="value" data-count="{{ earnings|stringformat:'s' }}">0</div>
+        <div class="hint">after platform fee</div>
+      </div>
+    </div>
+
+    <div class="split">
+      <div>
+        <div class="panel">
+          <div class="panel-head">
+            <h3>Incoming requests</h3>
+            {% if pending_requests %}<span class="badge badge-requested">{{ pending_requests|length }} new</span>{% endif %}
+          </div>
+          {% for b in pending_requests %}
+          <div class="list-row">
+            <div class="lead">
+              <b>{{ b.category }} · {{ b.customer.display_name }}</b>
+              <span>🗓 {{ b.scheduled_for|date:"D, M j · g:i A" }} &nbsp;·&nbsp; 📍 {{ b.address|truncatechars:40 }}</span>
+              <span class="text-muted" style="font-size:.84rem">{{ b.description|truncatewords:12 }}</span>
+            </div>
+            <a href="{% url 'bookings:detail' b.pk %}" class="btn btn-primary btn-sm">Respond</a>
+          </div>
+          {% empty %}
+          <div class="empty"><span class="empty-ico">📭</span><b>No new requests right now.</b><br>New ones land here and in your notifications.</div>
+          {% endfor %}
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <h3>Active jobs</h3>
+            <a href="{% url 'bookings:list' %}" class="btn btn-ghost btn-sm">All jobs →</a>
+          </div>
+          {% for b in active_jobs %}
+          <div class="list-row">
+            <div class="lead">
+              <b>{{ b.category }} · {{ b.customer.display_name }}</b>
+              <span>🗓 {{ b.scheduled_for|date:"D, M j · g:i A" }}</span>
+            </div>
+            <div class="flex center gap-sm">
+              <span class="badge badge-{{ b.status }}">{{ b.get_status_display }}</span>
+              <a href="{% url 'bookings:detail' b.pk %}" class="btn btn-ghost btn-sm">View</a>
+            </div>
+          </div>
+          {% empty %}
+          <div class="empty"><span class="empty-ico">🛠️</span><b>No active jobs.</b></div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <aside>
+        {% if profile %}
+        <div class="panel">
+          <div class="panel-head"><h3>Your standing</h3></div>
+          <div class="panel-body">
+            <div class="rating" style="font-size:1.7rem">★ {{ profile.rating_avg }}</div>
+            <p class="text-muted mt-0">{{ profile.rating_count }} review{{ profile.rating_count|pluralize }}</p>
+            <div class="chips">{% for c in profile.categories.all %}<span class="chip">{{ c.name }}</span>{% endfor %}</div>
+            <hr class="divider">
+            <div class="kv">
+              <span class="k">Availability</span>
+              {% if profile.is_available %}<span class="badge badge-paid">Available</span>{% else %}<span class="badge badge-cancelled">Unavailable</span>{% endif %}
+            </div>
+            <div class="kv"><span class="k">Approval</span>
+              {% if profile.is_approved %}<span class="badge badge-paid">✓ Verified</span>{% else %}<span class="badge badge-pending" style="background:var(--warn-bg);color:var(--warn)">Pending</span>{% endif %}
+            </div>
+          </div>
+        </div>
+        {% endif %}
+        <div class="panel">
+          <div class="panel-body">
+            <b>💡 Grow your business</b>
+            <p class="text-muted mt-1 mb-0" style="font-size:.88rem">Pros with a complete bio and photo get booked more. Keep your availability current to avoid cancellations.</p>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+</div>
+{% endblock %}

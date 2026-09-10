@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}{% if user.is_provider %}My jobs{% else %}My bookings{% endif %}{% endblock %}
+{% block content %}
+<div class="page">
+  <div class="container">
+    <div class="page-head row reveal revealed">
+      <div>
+        <span class="eyebrow">{% if user.is_provider %}Work board{% else %}Activity{% endif %}</span>
+        <h1>{% if user.is_provider %}Jobs & requests{% else %}My bookings{% endif %}</h1>
+        <p>{{ bookings|length }} record{{ bookings|length|pluralize }}{% if active_status %} with this status{% endif %}.</p>
+      </div>
+      {% if user.is_customer %}
+        <a href="{% url 'services:provider_directory' %}" class="btn btn-primary">+ New booking</a>
+      {% endif %}
+    </div>
+
+    <div class="chips" style="margin-bottom:1.4rem">
+      <a class="chip {% if not active_status %}active{% endif %}" href="{% url 'bookings:list' %}">All</a>
+      {% for value, label in statuses %}
+      <a class="chip {% if value == active_status %}active{% endif %}" href="?status={{ value }}">{{ label }}</a>
+      {% endfor %}
+    </div>
+
+    <div class="panel">
+      {% for b in bookings %}
+      <div class="list-row">
+        <div class="lead">
+          <b>{{ b.category }} · {% if user.is_provider %}{{ b.customer.display_name }}{% else %}{{ b.provider.display_name }}{% endif %}</b>
+          <span>🗓 {{ b.scheduled_for|date:"D, M j Y · g:i A" }} &nbsp;·&nbsp; 📍 {{ b.address }}</span>
+        </div>
+        <div class="flex center gap wrap" style="justify-content:flex-end">
+          <b>{{ b.quoted_price }}</b>
+          <span class="badge badge-{{ b.status }}">{{ b.get_status_display }}</span>
+          <a href="{% url 'bookings:detail' b.pk %}" class="btn btn-ghost btn-sm">View</a>
+        </div>
+      </div>
+      {% empty %}
+      <div class="empty">
+        <span class="empty-ico">📅</span>
+        <b>No bookings found.</b><br>
+        {% if user.is_customer %}<a href="{% url 'services:provider_directory' %}" style="color:var(--brand-strong);font-weight:700">Find a professional</a> to create your first booking.{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

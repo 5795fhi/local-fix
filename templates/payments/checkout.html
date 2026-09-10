@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Checkout · Booking #{{ booking.pk }}{% endblock %}
+{% block content %}
+<div class="page">
+  <div class="container container-narrow">
+    <div class="page-head reveal revealed">
+      <span class="eyebrow">Secure demo checkout</span>
+      <h1>Complete your payment</h1>
+      <p>Booking #{{ booking.pk }} · {{ booking.category }} with {{ booking.provider.display_name }}</p>
+    </div>
+
+    <div class="card">
+      <div class="checkout-lock">🔒 <span>Demo gateway — no real money moves and no card data is collected.</span></div>
+
+      <h3>Order summary</h3>
+      <div class="kv"><span class="k">Service</span><b>{{ booking.category }}</b></div>
+      <div class="kv"><span class="k">Professional</span><b>{{ booking.provider.display_name }}</b></div>
+      <div class="kv"><span class="k">Completed on</span><b>{{ booking.completed_at|date:"M j, Y · g:i A"|default:"—" }}</b></div>
+      <div class="kv"><span class="k">Service charge</span><b>{{ booking.quoted_price }}</b></div>
+      <div class="kv"><span class="k">Includes platform fee ({{ commission_pct }}%)</span><b>{{ booking.platform_fee }}</b></div>
+
+      <div class="total-row"><span>Total due</span><span>{{ booking.quoted_price }}</span></div>
+
+      <form method="post" action="{% url 'payments:pay' booking.pk %}" class="mt-2" novalidate>
+        {% csrf_token %}
+        <div class="field">
+          <label>Payment method</label>
+          <div class="choice-grid">
+            {% for value, label in methods %}
+            <label class="choice-card">
+              <input type="radio" name="method" value="{{ value }}" {% if forloop.first %}checked{% endif %}>
+              <span><b>{{ label }}</b><small>{% if value == "card" %}Mock card charge{% elif value == "wallet" %}Demo wallet balance{% else %}Pay the pro directly{% endif %}</small></span>
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+
+        <button class="btn btn-primary btn-block btn-lg btn-sheen" type="submit">
+          Pay {{ booking.quoted_price }} securely
+        </button>
+        <p class="text-muted text-center mb-0 mt-1" style="font-size:.82rem">
+          You'll get a receipt and the pro is notified instantly after payment.
+        </p>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

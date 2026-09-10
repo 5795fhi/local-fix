@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Find a professional{% endblock %}
+{% block content %}
+<div class="page">
+  <div class="container">
+    <div class="page-head reveal revealed">
+      <span class="eyebrow">Directory</span>
+      <h1>Find your professional</h1>
+      <p>{{ providers|length }} verified pro{{ providers|length|pluralize }}{% if active_category or query %} matching your filters{% endif %}.</p>
+    </div>
+
+    <form method="get" class="filter-card" role="search">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" style="color:var(--muted)"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      <input class="input" type="search" name="q" value="{{ query }}" placeholder="Search by name, skill or area">
+      <select class="input" name="category" aria-label="Filter by category">
+        <option value="">All categories</option>
+        {% for c in categories %}
+        <option value="{{ c.slug }}" {% if c.slug == active_category %}selected{% endif %}>{{ c.icon_emoji }} {{ c.name }}</option>
+        {% endfor %}
+      </select>
+      <button class="btn btn-primary" type="submit">Search</button>
+      {% if query or active_category %}
+        <a href="{% url 'services:provider_directory' %}" class="btn btn-ghost btn-sm">Clear</a>
+      {% endif %}
+    </form>
+
+    <div class="grid grid-3 stagger">
+      {% for p in providers %}
+      <div class="card provider-card card-hover">
+        <div class="provider-top">
+          <div class="avatar" aria-hidden="true">{{ p.user.display_name|first|upper }}</div>
+          <div class="grow">
+            <b>{{ p.user.display_name }}</b>
+            {% if p.is_approved %}<span class="tick" title="Verified by LocalFix">✓</span>{% endif %}
+            <div class="meta">{{ p.headline|default:"Service professional" }}</div>
+          </div>
+        </div>
+
+        <div class="flex between center">
+          <span class="rating">★ {{ p.rating_avg }} <span class="text-muted">({{ p.rating_count }})</span></span>
+          <span class="chip">📍 {{ p.service_area|default:"Local" }}</span>
+        </div>
+
+        <div class="chips">
+          {% for c in p.categories.all|slice:":3" %}<span class="chip">{{ c.name }}</span>{% endfor %}
+        </div>
+
+        <div class="flex between center" style="margin-top:auto;padding-top:.7rem">
+          <div>
+            <b>{{ p.hourly_rate }}/hr</b>
+            <div class="meta">{% if p.is_available %}<span class="hi">Available now</span>{% else %}Currently busy{% endif %}</div>
+          </div>
+          <a href="{% url 'services:provider_detail' p.pk %}" class="btn btn-dark btn-sm">View profile</a>
+        </div>
+      </div>
+      {% empty %}
+      <div class="empty" style="grid-column:1/-1">
+        <span class="empty-ico">🔍</span>
+        <b>No professionals match your search.</b><br>
+        Try a different keyword or <a href="{% url 'services:provider_directory' %}" style="color:var(--brand-strong);font-weight:700">clear the filters</a>.
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

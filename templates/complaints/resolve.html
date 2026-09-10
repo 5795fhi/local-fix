@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Complaint #{{ complaint.pk }}{% endblock %}
+{% block content %}
+<div class="page">
+  <div class="container container-narrow">
+    <div class="page-head reveal revealed">
+      <a href="{% url 'complaints:manage' %}" class="text-muted" style="font-size:.88rem">← All complaints</a>
+      <h1 style="margin-top:.3rem">Complaint #{{ complaint.pk }}</h1>
+      <p>By {{ complaint.raised_by.display_name }} · {{ complaint.created_at|date:"M j, Y · g:i A" }}</p>
+    </div>
+
+    <div class="card mb-2">
+      <div class="flex between center wrap">
+        <b style="font-size:1.05rem">{{ complaint.subject }}</b>
+        <span class="badge badge-{{ complaint.status }}">{{ complaint.get_status_display }}</span>
+      </div>
+      <hr class="divider">
+      <p class="text-muted mb-0 text-pretty">{{ complaint.description }}</p>
+      {% if complaint.booking %}
+        <p class="mb-0 mt-2"><span class="chip">Booking #{{ complaint.booking.pk }} · {{ complaint.booking.category }}</span></p>
+      {% endif %}
+    </div>
+
+    <div class="card">
+      <h3>Resolve</h3>
+      <form method="post" novalidate>
+        {% csrf_token %}
+        <div class="field">
+          <label for="{{ form.status.id_for_label }}">Status</label>
+          {{ form.status }}{{ form.status.errors }}
+        </div>
+        <div class="field">
+          <label for="{{ form.resolution.id_for_label }}">Resolution notes</label>
+          {{ form.resolution }}{{ form.resolution.errors }}
+          <div class="helptext">The raiser is notified when you update this complaint.</div>
+        </div>
+        <button class="btn btn-primary" type="submit">Save update</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

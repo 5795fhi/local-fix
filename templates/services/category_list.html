@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}All services{% endblock %}
+{% block content %}
+<div class="page">
+  <div class="container">
+    <div class="page-head reveal revealed">
+      <span class="eyebrow">Service catalogue</span>
+      <h1>What do you need done?</h1>
+      <p>Every category is backed by verified professionals with transparent starting prices.</p>
+    </div>
+
+    <div class="grid grid-4 stagger">
+      {% for category in categories %}
+      <a class="card cat-card card-hover" href="{% url 'services:provider_directory' %}?category={{ category.slug }}">
+        <div class="cat-icon" aria-hidden="true">{{ category.icon_emoji }}</div>
+        <h3>{{ category.name }}</h3>
+        <p>{{ category.description|truncatewords:10 }}</p>
+        <div class="price">
+          <span><span class="from">from</span> {{ category.base_price }}</span>
+          <span class="chip">{{ category.provider_count }} pro{{ category.provider_count|pluralize }}</span>
+        </div>
+      </a>
+      {% empty %}
+      <div class="empty"><span class="empty-ico">🗂️</span>No categories available yet.</div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

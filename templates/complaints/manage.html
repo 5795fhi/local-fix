@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Manage complaints{% endblock %}
+{% block content %}
+<div class="page">
+  <div class="container">
+    <div class="page-head row reveal revealed">
+      <div>
+        <span class="eyebrow">Moderation</span>
+        <h1>Complaints</h1>
+        <p>{{ complaints|length }} record{{ complaints|length|pluralize }}{% if active_status %} with this status{% endif %}.</p>
+      </div>
+    </div>
+
+    <div class="chips" style="margin-bottom:1.4rem">
+      <a class="chip {% if not active_status %}active{% endif %}" href="{% url 'complaints:manage' %}">All</a>
+      {% for value, label in statuses %}
+      <a class="chip {% if value == active_status %}active{% endif %}" href="?status={{ value }}">{{ label }}</a>
+      {% endfor %}
+    </div>
+
+    <div class="panel">
+      {% for c in complaints %}
+      <div class="list-row">
+        <div class="lead">
+          <b>#{{ c.pk }} · {{ c.subject }}</b>
+          <span>By {{ c.raised_by.display_name }}{% if c.booking %} · Booking #{{ c.booking.pk }}{% endif %} · {{ c.created_at|date:"M j, Y" }}</span>
+        </div>
+        <div class="flex center gap-sm">
+          <span class="badge badge-{{ c.status }}">{{ c.get_status_display }}</span>
+          <a href="{% url 'complaints:resolve' c.pk %}" class="btn btn-ghost btn-sm">Handle</a>
+        </div>
+      </div>
+      {% empty %}
+      <div class="empty"><span class="empty-ico">🎉</span><b>Nothing to moderate.</b><br>No complaints match this view.</div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

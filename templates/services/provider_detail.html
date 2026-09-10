@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}{{ profile.user.display_name }}{% endblock %}
+{% block content %}
+<div class="page">
+  <div class="container">
+    <div class="split">
+      <div>
+        <div class="card pd-head reveal revealed">
+          <div class="flex gap center wrap">
+            <div class="avatar avatar-lg" aria-hidden="true">{{ profile.user.display_name|first|upper }}</div>
+            <div class="grow">
+              <div class="flex center gap-sm wrap">
+                <h1 class="mb-0">{{ profile.user.display_name }}</h1>
+                {% if profile.is_approved %}<span class="badge badge-paid">✓ Verified</span>{% endif %}
+              </div>
+              <p class="text-muted mb-0">{{ profile.headline|default:"Service professional" }}</p>
+              <div class="rating mt-1">★ {{ profile.rating_avg }} <span class="text-muted">({{ profile.rating_count }} reviews)</span></div>
+            </div>
+          </div>
+
+          <div class="chips mt-2">{% for c in profile.categories.all %}<span class="chip">{{ c.name }}</span>{% endfor %}</div>
+
+          <div class="pd-stats">
+            <div><b>{{ profile.years_experience }}</b><span>yrs experience</span></div>
+            <div><b>{{ profile.hourly_rate }}</b><span>per hour</span></div>
+            <div><b>{{ profile.service_area|default:"Local" }}</b><span>service area</span></div>
+            <div>
+              {% if profile.is_available %}<span class="badge badge-paid">Available</span>
+              {% else %}<span class="badge badge-cancelled">Busy</span>{% endif %}
+              <span>status</span>
+            </div>
+          </div>
+
+          {% if profile.bio %}<p class="mt-2 mb-0 text-pretty">{{ profile.bio }}</p>{% endif %}
+        </div>
+
+        <div class="panel mt-2">
+          <div class="panel-head"><h3>Reviews</h3><span class="chip">{{ profile.rating_count }} total</span></div>
+          {% for r in reviews %}
+          <div class="list-row">
+            <div class="lead">
+              <span class="stars" aria-label="{{ r.rating }} out of 5">{% for _ in "12345"|make_list %}{% if forloop.counter <= r.rating %}★{% else %}☆{% endif %}{% endfor %}</span>
+              <b>{{ r.customer.display_name }}</b>
+              <span>{{ r.comment }}</span>
+            </div>
+            <small class="text-muted" style="white-space:nowrap">{{ r.created_at|date:"M j, Y" }}</small>
+          </div>
+          {% empty %}
+          <div class="empty"><span class="empty-ico">💬</span>No reviews yet — be the first after your booking.</div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <aside>
+        <div class="card pd-cta">
+          <h3>Book this pro</h3>
+          <div class="kv"><span class="k">Hourly rate</span><b>{{ profile.hourly_rate }}</b></div>
+          <div class="kv"><span class="k">Experience</span><b>{{ profile.years_experience }} yrs</b></div>
+          <div class="kv"><span class="k">Service area</span><b>{{ profile.service_area|default:"Local" }}</b></div>
+          <div class="kv"><span class="k">Availability</span>
+            {% if profile.is_available %}<span class="badge badge-paid">Available</span>{% else %}<span class="badge badge-cancelled">Busy</span>{% endif %}
+          </div>
+
+          {% if user.is_authenticated and user.is_customer %}
+            <a href="{% url 'bookings:create' profile.pk %}" class="btn btn-primary btn-block btn-lg mt-2">Book now</a>
+            <p class="text-muted mb-0 mt-1" style="font-size:.82rem">You'll pick a time, describe the job and get a quote before paying.</p>
+          {% elif not user.is_authenticated %}
+            <a href="{% url 'accounts:login' %}" class="btn btn-primary btn-block btn-lg mt-2">Log in to book</a>
+          {% elif user.is_provider %}
+            <p class="text-muted mb-0 mt-2" style="font-size:.85rem">You're viewing as a service provider — only customers can book.</p>
+          {% endif %}
+        </div>
+
+        <div class="panel mt-2">
+          <div class="panel-body">
+            <b>🔒 Safe booking</b>
+            <p class="text-muted mb-0 mt-1" style="font-size:.85rem">Payment is only collected after the job is completed, and every booking is tracked end to end.</p>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+</div>
+{% endblock %}

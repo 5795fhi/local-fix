@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Review booking #{{ booking.pk }}{% endblock %}
+{% block content %}
+<div class="page">
+  <div class="container container-narrow">
+    <div class="page-head reveal revealed text-center">
+      <div style="margin:0 auto">
+        <span class="eyebrow" style="justify-content:center">Feedback</span>
+        <h1>Rate your experience</h1>
+        <p>{{ booking.category }} with <b>{{ booking.provider.display_name }}</b> · Booking #{{ booking.pk }}</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <form method="post" novalidate>
+        {% csrf_token %}
+        {% if form.non_field_errors %}<div class="form-alert">{% for e in form.non_field_errors %}{{ e }}{% endfor %}</div>{% endif %}
+
+        <div class="field text-center">
+          <label style="justify-content:center">Your rating</label>
+          <div class="star-picker" style="justify-content:center">
+            {% for value, label in form.rating.field.choices %}
+            <input type="radio" id="star{{ value }}" name="rating" value="{{ value }}" {% if form.rating.value|stringformat:"s" == value|stringformat:"s" %}checked{% endif %}>
+            <label for="star{{ value }}" title="{{ label }} star{{ label|pluralize }}" aria-label="{{ label }} stars">★</label>
+            {% endfor %}
+          </div>
+          {{ form.rating.errors }}
+        </div>
+
+        <div class="field">
+          <label for="{{ form.comment.id_for_label }}">Tell us about the job</label>
+          {{ form.comment }}
+          {{ form.comment.errors }}
+          <div class="helptext">Was the pro on time? Communicative? Did the fix hold up?</div>
+        </div>
+
+        <button class="btn btn-primary btn-block btn-lg" type="submit">Submit review</button>
+      </form>
+    </div>
+
+    <p class="text-muted text-center" style="font-size:.84rem">One review per booking — honest feedback keeps the marketplace trustworthy.</p>
+  </div>
+</div>
+{% endblock %}

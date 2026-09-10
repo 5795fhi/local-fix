@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Log in{% endblock %}
+{% block content %}
+<div class="auth-wrap">
+  <div class="auth-card">
+    <div class="auth-brand"><span class="brand-mark">LF</span></div>
+    <h1>Welcome back</h1>
+    <p class="text-muted">Log in to manage your bookings, jobs and payments.</p>
+
+    <form method="post" novalidate>
+      {% csrf_token %}
+      {% if form.non_field_errors %}
+        <div class="form-alert">{% for e in form.non_field_errors %}{{ e }}{% endfor %}</div>
+      {% endif %}
+
+      <div class="field">
+        <label for="{{ form.username.id_for_label }}">Email</label>
+        {{ form.username }}
+        {{ form.username.errors }}
+      </div>
+
+      <div class="field">
+        <label for="{{ form.password.id_for_label }}">Password</label>
+        {{ form.password }}
+        {{ form.password.errors }}
+      </div>
+
+      <button class="btn btn-primary btn-block btn-sheen" type="submit">Log in</button>
+    </form>
+
+    <div class="auth-divider">demo accounts</div>
+    <div class="demo-creds">
+      <div><span class="chip">admin@localfix.test</span> <code>admin12345</code></div>
+      <div><span class="chip">casey.jordan@example.com</span> <code>customer12345</code></div>
+      <div><span class="chip">ava.turner@example.com</span> <code>provider12345</code></div>
+    </div>
+    <p class="auth-alt mb-0">Password = role + 12345 for the other demo accounts.</p>
+
+    <p class="auth-alt">New to {{ SITE_NAME }}? <a href="{% url 'accounts:register' %}">Create an account</a></p>
+  </div>
+</div>
+{% endblock %}

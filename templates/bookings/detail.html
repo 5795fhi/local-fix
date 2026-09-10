@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+{% block title %}Booking #{{ booking.pk }}{% endblock %}
+{% block content %}
+<div class="page">
+  <div class="container">
+    <div class="page-head row reveal revealed">
+      <div>
+        <a href="{% url 'bookings:list' %}" class="text-muted" style="font-size:.88rem">← All bookings</a>
+        <h1 style="margin-top:.3rem">Booking #{{ booking.pk }} · {{ booking.category }}</h1>
+        <p>{{ booking.customer.display_name }} → {{ booking.provider.display_name }} · created {{ booking.created_at|date:"M j, Y" }}</p>
+      </div>
+      <span class="badge badge-{{ booking.status }}" style="font-size:.9rem;padding:.5rem 1rem">{{ booking.get_status_display }}</span>
+    </div>
+
+    {% if booking.status == "requested" or booking.status == "accepted" or booking.status == "in_progress" or booking.status == "completed" or booking.status == "paid" %}
+    <div class="card mb-2">
+      <div class="stepper">
+        {% if booking.status == "cancelled" or booking.status == "rejected" %}{% endif %}
+        <div class="step {% if booking.status != 'requested' %}done{% else %}current{% endif %}"><span class="dot"></span><small>Requested</small></div>
+        <div class="step {% if booking.status == 'accepted' %}current{% endif %} {% if booking.status == 'in_progress' or booking.status == 'completed' or booking.status == 'paid' %}done{% endif %}"><span class="dot"></span><small>Accepted</small></div>
+        <div class="step {% if booking.status == 'in_progress' %}current{% endif %} {% if booking.status == 'completed' or booking.status == 'paid' %}done{% endif %}"><span class="dot"></span><small>In progress</small></div>
+        <div class="step {% if booking.status == 'completed' %}current{% endif %} {% if booking.status == 'paid' %}done{% endif %}"><span class="dot"></span><small>Completed</small></div>
+        <div class="step {% if booking.status == 'paid' %}current done{% endif %}"><span class="dot"></span><small>Paid</small></div>
+      </div>
+      {% if booking.status == "cancelled" or booking.status == "rejected" %}
+        <div class="terminal-note">⚠️ This booking was <b>{{ booking.get_status_display|lower }}</b>{% if booking.cancel_reason %} — “{{ booking.cancel_reason }}”{% endif %}</div>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <div class="split">
+      <div>
+        <!-- Job details -->
+        <div class="panel">
+          <div class="panel-head"><h3>Job details</h3><span class="badge badge-{{ booking.status }}">{{ booking.get_status_display }}</span></div>
+          <div class="panel-body">
+            <div class="kv"><span class="k">Service</span><b>{{ booking.category }}</b></div>
+            <div class="kv"><span class="k">Scheduled for</span><b>{{ booking.scheduled_for|date:"D, M j Y · g:i A" }}</b></div>
+            <div class="kv"><span class="k">Address</span><b>{{ booking.address }}</b></div>
+            <div style="margin-top:1rem">
+              <b>Problem description</b>
+              <p class="text-muted mb-0 mt-1 text-pretty">{{ booking.description }}</p>
+            </div>
+            {% if booking.provider_note %}
+            <div style="margin-top:1rem">
+              <b>Note from provider</b>
+              <p class="text-muted mb-0 mt-1">{{ booking.provider_note }}</p>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="panel">
+          <div class="panel-head"><h3>Actions</h3></div>
+          <div class="panel-body">
+
+            {% if user == booking.provider and booking.status == "requested" %}
+              <form method="post" action="{% url 'bookings:accept' booking.pk %}" class="accept-box">
+                {% csrf_token %}
+                <b>Accept this request</b>
+                <p class="text-muted" style="font-size:.86rem">Confirm your quote — the customer sees this price before paying.</p>
+                <div class="flex gap-sm wrap">
+                  <div class="field grow mb-0">
+                    <label for="id_quoted_price">Your quote</label>
+                    {{ quote_form.quoted_price }}
+                  </div>
+                  <div class="field grow mb-0">
+                    <label for="id_provider_note">Note (optional)</label>
+                    {{ quote_form.provider_note }}
+                  </div>
+                </div>
+                {{ quote_form.quoted_price.errors }}{{ quote_form.provider_note.errors }}
+                <button class="btn btn-primary mt-2" type="submit">✓ Accept with quote</button>
+              </form>
+              <form method="post" action="{% url 'bookings:reject' booking.pk %}" class="mt-2" data-confirm="Reject this booking request?">
+                {% csrf_token %}
+                <button class="btn btn-danger" type="submit">Reject request</button>
+              </form>
+            {% endif %}
+
+            {% if user == booking.provider and booking.status == "accepted" %}
+              <form method="post" action="{% url 'bookings:start' booking.pk %}">
+                {% csrf_token %}
+                <button class="btn btn-primary" type="submit">▶ Start job</button>
+                <span class="text-muted" style="font-size:.86rem">Mark the work as started once you arrive.</span>
+              </form>
+            {% endif %}
+
+            {% if user == booking.provider and booking.status == "in_progress" %}
+              <form method="post" action="{% url 'bookings:complete' booking.pk %}" data-confirm="Mark this job as complete?">
+                {% csrf_token %}
+                <button class="btn btn-primary" type="submit">✓ Mark complete</button>
+                <span class="text-muted" style="font-size:.86rem">The customer will be asked to pay.</span>
+              </form>
+            {% endif %}
+
+            {% if user == booking.customer and booking.status == "completed" %}
+              <div class="pay-prompt">
+                <b>💳 Your job is done — payment due</b>
+                <p class="text-muted mb-0" style="font-size:.88rem">The total charge is shown before you confirm. Pay securely through the demo gateway.</p>
+                <a href="{% url 'payments:checkout' booking.pk %}" class="btn btn-primary btn-sheen mt-2">Pay {{ booking.quoted_price }} now</a>
+              </div>
+            {% endif %}
+
+            {% if user == booking.customer and booking.status == "paid" and booking.is_reviewable %}
+              <div class="pay-prompt">
+                <b>⭐ Rate your experience</b>
+                <p class="text-muted mb-0" style="font-size:.88rem">Your review helps other customers pick great pros.</p>
+                <a href="{% url 'reviews:leave' booking.pk %}" class="btn btn-primary mt-2">Write a review</a>
+              </div>
+            {% endif %}
+
+            {% if booking.has_review %}
+              <div class="kv"><span class="k">Review</span><span class="stars">★ {{ booking.review.rating }}/5</span></div>
+            {% endif %}
+
+            {% if booking.is_open %}
+              <form method="post" action="{% url 'bookings:cancel' booking.pk %}" class="mt-2 cancel-box" data-confirm="Cancel this booking?">
+                {% csrf_token %}
+                <b style="font-size:.9rem">Need to cancel?</b>
+                {{ cancel_form.reason }}
+                {{ cancel_form.reason.errors }}
+                <button class="btn btn-danger btn-sm mt-2" type="submit">Cancel booking</button>
+              </form>
+            {% endif %}
+
+            {% if user == booking.customer and booking.status == "requested" %}
+              <p class="text-muted mb-0 mt-2" style="font-size:.84rem">Waiting for {{ booking.provider.display_name }} to respond. You can cancel while it's pending.</p>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <aside>
+        <!-- Charge -->
+        <div class="card">
+          <h3>Charge</h3>
+          <div class="kv"><span class="k">Quote</span><b>{{ booking.quoted_price }}</b></div>
+          <div class="kv"><span class="k">Platform fee ({{ commission_pct }}%)</span><b>{{ booking.platform_fee }}</b></div>
+          <div class="kv"><span class="k">Pro receives</span><b>{{ booking.provider_payout }}</b></div>
+          {% if booking.status == "paid" or booking.status == "completed" %}
+          <div class="total-row"><span>Total</span><span>{{ booking.quoted_price }}</span></div>
+          {% else %}
+          <div class="total-row"><span>Estimated</span><span>{{ booking.quoted_price }}</span></div>
+          {% endif %}
+
+          {% if payment %}
+            <hr class="divider">
+            <div class="kv"><span class="k">Payment</span><span class="badge badge-{{ payment.status }}">{{ payment.get_status_display }}</span></div>
+            <div class="kv"><span class="k">Method</span><b>{{ payment.get_method_display }}</b></div>
+            <div class="kv"><span class="k">Reference</span><b style="font-size:.82rem">{{ payment.reference }}</b></div>
+            {% if payment.status == "succeeded" %}
+              <a href="{% url 'payments:receipt' booking.pk %}" class="btn btn-ghost btn-sm btn-block mt-2">View receipt</a>
+            {% endif %}
+          {% endif %}
+        </div>
+
+        <!-- History -->
+        <div class="panel">
+          <div class="panel-head"><h3>Status history</h3></div>
+          <div class="panel-body">
+            <ul class="timeline">
+              {% for h in history %}
+              <li>
+                <b>{{ h.get_to_status_display }}</b>
+                {% if h.note %}<span class="text-muted"> — {{ h.note }}</span>{% endif %}
+                <small>{{ h.created_at|date:"M j, Y · g:i A" }}{% if h.changed_by %} · by {{ h.changed_by.display_name }}{% endif %}</small>
+              </li>
+              {% empty %}
+              <li><b>Requested</b><small>{{ booking.created_at|date:"M j, Y · g:i A" }}</small></li>
+              {% endfor %}
+            </ul>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  /* Reveal terminal states gracefully: dim the stepper for cancelled/rejected */
+  (function () {
+    var terminal = document.querySelector('.terminal-note');
+    if (terminal) {
+      var stepper = terminal.closest('.card').querySelector('.stepper');
+      if (stepper) stepper.style.opacity = '.35';
+    }
+  })();
+</script>
+{% endblock %}

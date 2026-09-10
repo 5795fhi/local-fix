@@ -1,0 +1,254 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block title %}Trusted local pros, on demand{% endblock %}
+
+{% block content %}
+<!-- ================= HERO ================= -->
+<section class="hero">
+  <div class="hero-glow g1" aria-hidden="true"></div>
+  <div class="hero-glow g2" aria-hidden="true"></div>
+  <div class="container">
+    <div class="hero-inner">
+      <div class="hero-copy">
+        <span class="eyebrow-pill"><span class="pulse-dot" aria-hidden="true"></span> Home services marketplace</span>
+        <h1 class="text-balance">Home fixes, <span class="grad">handled</span> by pros you can trust.</h1>
+        <p class="lede text-pretty">From a leaking tap to a full rewiring job, LocalFix connects you with vetted
+          local professionals. Compare, book a time, pay securely and track every step — all in one place.</p>
+
+        <form action="{% url 'services:provider_directory' %}" method="get" class="hero-search" role="search">
+          <svg class="hs-ico" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input type="search" name="q" placeholder="What needs fixing? Try “leaking tap” or “wiring”…" aria-label="Search professionals">
+          <button class="btn btn-primary" type="submit">Find a pro</button>
+        </form>
+
+        <div class="hero-chips">
+          <a class="chip" href="{% url 'services:provider_directory' %}?category=electrical">⚡ Electrical</a>
+          <a class="chip" href="{% url 'services:provider_directory' %}?category=plumbing">🔧 Plumbing</a>
+          <a class="chip" href="{% url 'services:provider_directory' %}?category=carpentry">🪚 Carpentry</a>
+          <a class="chip" href="{% url 'services:provider_directory' %}?category=appliance-repair">🔌 Appliance repair</a>
+        </div>
+
+        <div class="hero-stats">
+          <div class="stat"><b><span data-count="{{ provider_count }}" data-fmt="plus">0</span></b><span>Verified pros</span></div>
+          <div class="stat"><b><span data-count="{{ category_count }}">0</span></b><span>Service categories</span></div>
+          <div class="stat"><b><span data-count="{{ booking_count }}" data-fmt="plus">0</span></b><span>Jobs booked</span></div>
+        </div>
+      </div>
+
+      <div class="hero-visual" aria-hidden="true">
+        <div class="hero-card">
+          <div class="hc-row">
+            <div class="hc-avatar">AT</div>
+            <div>
+              <b>Ava Turner</b>
+              <div class="hc-meta">Master plumber · Downtown</div>
+            </div>
+            <span class="tick" style="margin-left:auto">✓</span>
+          </div>
+          <div class="hc-row">
+            <div class="hc-avatar">LR</div>
+            <div>
+              <b>Liam Reed</b>
+              <div class="hc-meta">Certified electrician · Northside</div>
+            </div>
+            <span class="rating" style="margin-left:auto">★ 4.9</span>
+          </div>
+          <div class="hc-row">
+            <div class="hc-avatar">NB</div>
+            <div>
+              <b>Noah Blake</b>
+              <div class="hc-meta">Carpenter · Eastville</div>
+            </div>
+            <span class="badge badge-paid" style="margin-left:auto">Today 3:00</span>
+          </div>
+          <div class="hc-cta">Booking confirmed · Payment secured 🔒</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= CATEGORIES ================= -->
+<section class="section" id="services">
+  <div class="container">
+    <div class="section-head reveal">
+      <div>
+        <span class="eyebrow">Browse</span>
+        <h2>Popular services</h2>
+        <p class="sub">Transparent starting prices, real availability, verified professionals.</p>
+      </div>
+      <a href="{% url 'services:category_list' %}" class="btn btn-ghost btn-sm">View all →</a>
+    </div>
+
+    <div class="grid grid-4 stagger">
+      {% for category in categories %}
+      <a class="card cat-card card-hover" href="{% url 'services:provider_directory' %}?category={{ category.slug }}">
+        <div class="cat-icon" aria-hidden="true">{{ category.icon_emoji }}</div>
+        <h3>{{ category.name }}</h3>
+        <p>{{ category.description|truncatewords:9 }}</p>
+        <div class="price">
+          <span><span class="from">from</span> {{ category.base_price }}</span>
+          <span class="chip">{{ category.provider_count }} pro{{ category.provider_count|pluralize }}</span>
+        </div>
+      </a>
+      {% empty %}
+      <div class="empty">No categories yet — run <code>python manage.py seed_demo</code>.</div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<!-- ================= HOW IT WORKS ================= -->
+<section class="section section-alt" id="how">
+  <div class="container">
+    <div class="section-head reveal">
+      <div>
+        <span class="eyebrow">How it works</span>
+        <h2>From problem to fixed, in four steps</h2>
+      </div>
+    </div>
+
+    <div class="journey reveal">
+      <div class="j-step">
+        <div class="j-dot">1</div>
+        <h3>Describe the job</h3>
+        <p>Pick a category and tell us what's wrong. Not sure? The built-in assistant helps you scope it.</p>
+      </div>
+      <div class="j-dotline" aria-hidden="true"></div>
+      <div class="j-step">
+        <div class="j-dot">2</div>
+        <h3>Choose your pro</h3>
+        <p>Compare verified providers by rating, area and rate. Check reviews from real completed jobs.</p>
+      </div>
+      <div class="j-dotline" aria-hidden="true"></div>
+      <div class="j-step">
+        <div class="j-dot">3</div>
+        <h3>Book &amp; track</h3>
+        <p>Send a request with your preferred time. Availability is checked, then track it from Requested to Done.</p>
+      </div>
+      <div class="j-dotline" aria-hidden="true"></div>
+      <div class="j-step">
+        <div class="j-dot">4</div>
+        <h3>Pay &amp; review</h3>
+        <p>See the charge up front. Pay securely when the work is done, then rate your pro.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= FEATURED PROS ================= -->
+{% if top_providers %}
+<section class="section" id="pros">
+  <div class="container">
+    <div class="section-head reveal">
+      <div>
+        <span class="eyebrow">Top rated</span>
+        <h2>Featured professionals</h2>
+        <p class="sub">Verified identities, real reviews, transparent rates.</p>
+      </div>
+      <a href="{% url 'services:provider_directory' %}" class="btn btn-ghost btn-sm">See all pros →</a>
+    </div>
+
+    <div class="grid grid-4 stagger">
+      {% for p in top_providers %}
+      <a class="card provider-card card-hover" href="{% url 'services:provider_detail' p.pk %}">
+        <div class="provider-top">
+          <div class="avatar" aria-hidden="true">{{ p.user.display_name|first|upper }}</div>
+          <div>
+            <b>{{ p.user.display_name }}</b>
+            {% if p.is_approved %}<span class="tick" title="Verified by LocalFix">✓</span>{% endif %}
+            <div class="meta">{{ p.headline|default:"Service professional" }}</div>
+          </div>
+        </div>
+        <div class="flex between center">
+          <span class="rating">★ {{ p.rating_avg }} <span class="text-muted">({{ p.rating_count }})</span></span>
+          <span class="chip">📍 {{ p.service_area|default:"Local" }}</span>
+        </div>
+        <div class="chips">
+          {% for c in p.categories.all|slice:":2" %}<span class="chip">{{ c.name }}</span>{% endfor %}
+        </div>
+        <div class="flex between center" style="margin-top:auto;padding-top:.6rem">
+          <b>{{ p.hourly_rate }}/hr</b>
+          <span class="btn btn-dark btn-sm">View profile</span>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<!-- ================= TRUST ================= -->
+<section class="section section-alt">
+  <div class="container">
+    <div class="section-head reveal">
+      <div>
+        <span class="eyebrow">Why LocalFix</span>
+        <h2>Built on trust, end to end</h2>
+      </div>
+    </div>
+    <div class="grid grid-3 stagger">
+      <div class="card reveal">
+        <div class="cat-icon" aria-hidden="true">🛡️</div>
+        <h3>Verified professionals</h3>
+        <p>Every pro is reviewed by our team before they appear in the directory, with a visible verification badge.</p>
+      </div>
+      <div class="card reveal">
+        <div class="cat-icon" aria-hidden="true">💳</div>
+        <h3>Secure demo payments</h3>
+        <p>The charge is shown before you confirm. Payments go through a safe demo gateway — no real card data, ever.</p>
+      </div>
+      <div class="card reveal">
+        <div class="cat-icon" aria-hidden="true">📊</div>
+        <h3>Track every booking</h3>
+        <p>Follow your job through Requested, Accepted, In progress and Completed — with notifications at every hop.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= CTA ================= -->
+<section class="section">
+  <div class="container">
+    <div class="cta-band reveal">
+      <div>
+        <h2>Ready when you are</h2>
+        <p class="mb-0" style="color:rgba(255,255,255,.75)">Create a free account and book your first pro in minutes.</p>
+      </div>
+      <div class="flex gap-sm wrap">
+        <a href="{% url 'accounts:register' %}" class="btn btn-primary btn-lg btn-sheen">Create your account</a>
+        <a href="{% url 'accounts:register' %}?role=provider" class="btn btn-ghost-light btn-lg">Become a pro</a>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  /* data-count suffix support: append "+" to stats marked data-fmt="plus" */
+  (function () {
+    document.querySelectorAll('[data-fmt="plus"]').forEach(function (el) {
+      var target = parseFloat(el.dataset.count || "0");
+      if (target > 0) {
+        var obs = new IntersectionObserver(function (entries) {
+          entries.forEach(function (en) {
+            if (en.isIntersecting) {
+              var start = null;
+              function frame(ts) {
+                if (!start) start = ts;
+                var p = Math.min((ts - start) / 1200, 1);
+                el.textContent = Math.round(target * (1 - Math.pow(1 - p, 3)));
+                if (p < 1) requestAnimationFrame(frame); else el.textContent = target + "+";
+              }
+              requestAnimationFrame(frame);
+              obs.disconnect();
+            }
+          });
+        }, { threshold: .4 });
+        obs.observe(el);
+      }
+    });
+  })();
+</script>
+{% endblock %}

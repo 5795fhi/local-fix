@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Create account{% endblock %}
+{% block content %}
+<div class="auth-wrap">
+  <div class="auth-card wide">
+    <div class="auth-brand"><span class="brand-mark">LF</span></div>
+    <h1>Create your account</h1>
+    <p class="text-muted">Join {{ SITE_NAME }} — as a customer or a service professional.</p>
+
+    <form method="post" novalidate>
+      {% csrf_token %}
+      {% if form.non_field_errors %}
+        <div class="form-alert">{% for e in form.non_field_errors %}{{ e }}{% endfor %}</div>
+      {% endif %}
+
+      <div class="field">
+        <label>I want to</label>
+        <div class="choice-grid">
+          <label class="choice-card">
+            <input type="radio" name="role" value="customer" {% if form.role.value == 'customer' or not form.role.value %}checked{% endif %}>
+            <span><b>🏠 Hire a pro</b><small>I need work done at my place</small></span>
+          </label>
+          <label class="choice-card">
+            <input type="radio" name="role" value="provider" {% if form.role.value == 'provider' %}checked{% endif %}>
+            <span><b>🧰 Offer services</b><small>I'm a professional looking for jobs</small></span>
+          </label>
+        </div>
+        {{ form.role.errors }}
+      </div>
+
+      <div class="flex gap-sm">
+        <div class="field grow">
+          <label for="{{ form.first_name.id_for_label }}">First name</label>
+          {{ form.first_name }}{{ form.first_name.errors }}
+        </div>
+        <div class="field grow">
+          <label for="{{ form.last_name.id_for_label }}">Last name</label>
+          {{ form.last_name }}{{ form.last_name.errors }}
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="{{ form.email.id_for_label }}">Email</label>
+        {{ form.email }}{{ form.email.errors }}
+      </div>
+
+      <div class="field">
+        <label for="{{ form.phone.id_for_label }}">Phone</label>
+        {{ form.phone }}{{ form.phone.errors }}
+      </div>
+
+      <div class="flex gap-sm">
+        <div class="field grow">
+          <label for="{{ form.password1.id_for_label }}">Password</label>
+          {{ form.password1 }}{{ form.password1.errors }}
+        </div>
+        <div class="field grow">
+          <label for="{{ form.password2.id_for_label }}">Confirm</label>
+          {{ form.password2 }}{{ form.password2.errors }}
+        </div>
+      </div>
+
+      <button class="btn btn-primary btn-block btn-sheen" type="submit">Create account</button>
+    </form>
+
+    <p class="auth-alt">Already have an account? <a href="{% url 'accounts:login' %}">Log in</a></p>
+  </div>
+</div>
+{% endblock %}

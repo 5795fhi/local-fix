@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block title %}Admin dashboard{% endblock %}
+{% block content %}
+<div class="page">
+  <div class="container">
+    <div class="page-head row reveal revealed">
+      <div>
+        <span class="eyebrow">Control center</span>
+        <h1>Platform overview</h1>
+        <p>Users, bookings, revenue and moderation.</p>
+      </div>
+      <div class="flex gap-sm wrap">
+        <a href="{% url 'complaints:manage' %}" class="btn btn-ghost">📮 Complaints ({{ open_complaints }} open)</a>
+        <a href="/admin/" class="btn btn-dark">Django admin</a>
+      </div>
+    </div>
+
+    <div class="stat-grid stagger">
+      <div class="stat-card">
+        <span class="stat-ico" aria-hidden="true">👥</span>
+        <div class="label">Total users</div>
+        <div class="value" data-count="{{ user_count }}">0</div>
+        <div class="hint">{{ customer_count }} customers · {{ provider_count }} pros</div>
+      </div>
+      <div class="stat-card">
+        <span class="stat-ico" aria-hidden="true">📅</span>
+        <div class="label">Bookings</div>
+        <div class="value" data-count="{{ booking_count }}">0</div>
+        <div class="hint">all time</div>
+      </div>
+      <div class="stat-card">
+        <span class="stat-ico" aria-hidden="true">⏳</span>
+        <div class="label">Pending pros</div>
+        <div class="value" data-count="{{ pending_providers|length }}">0</div>
+        <div class="hint">awaiting approval</div>
+      </div>
+      <div class="stat-card accent">
+        <span class="stat-ico" aria-hidden="true">💰</span>
+        <div class="label">Platform revenue</div>
+        <div class="value" data-count="{{ revenue|stringformat:'s' }}">0</div>
+        <div class="hint">{{ commission_pct }}% of paid bookings</div>
+      </div>
+    </div>
+
+    <div class="split">
+      <div>
+        <div class="panel">
+          <div class="panel-head">
+            <h3>Providers pending approval</h3>
+            {% if pending_providers %}<span class="badge badge-requested">{{ pending_providers|length }} waiting</span>{% endif %}
+          </div>
+          {% for p in pending_providers %}
+          <div class="list-row">
+            <div class="lead">
+              <b>{{ p.user.display_name }}</b>
+              <span>{{ p.headline|default:"No headline" }} — {{ p.service_area|default:"n/a" }}</span>
+            </div>
+            <form method="post" action="{% url 'core:approve_provider' p.pk %}">
+              {% csrf_token %}
+              <button class="btn btn-success btn-sm" type="submit">✓ Approve</button>
+            </form>
+          </div>
+          {% empty %}
+          <div class="empty"><span class="empty-ico">✅</span><b>No providers awaiting approval.</b></div>
+          {% endfor %}
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h3>Recent bookings</h3></div>
+          {% for b in recent_bookings %}
+          <div class="list-row">
+            <div class="lead">
+              <b>#{{ b.pk }} · {{ b.category }}</b>
+              <span>{{ b.customer.display_name }} → {{ b.provider.display_name }} · {{ b.scheduled_for|date:"M j" }}</span>
+            </div>
+            <span class="badge badge-{{ b.status }}">{{ b.get_status_display }}</span>
+          </div>
+          {% empty %}<div class="empty">No bookings yet.</div>{% endfor %}
+        </div>
+      </div>
+
+      <aside>
+        <div class="panel">
+          <div class="panel-head"><h3>Bookings by status</h3></div>
+          <div class="panel-body">
+            {% for row in status_breakdown %}
+            <div class="bar-row">
+              <div class="flex between" style="font-size:.86rem">
+                <span class="text-muted">{{ row.status|capfirst }}</span><b>{{ row.n }}</b>
+              </div>
+              <div class="bar-track"><div class="bar-fill" style="width:{% widthratio row.n max_status_count 100 %}%"></div></div>
+            </div>
+            {% empty %}
+            <p class="text-muted mb-0">No bookings yet.</p>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h3>Moderation</h3></div>
+          <div class="panel-body">
+            <div class="kv"><span class="k">Open complaints</span><b>{{ open_complaints }}</b></div>
+            <div class="kv"><span class="k">Customers</span><b>{{ customer_count }}</b></div>
+            <div class="kv"><span class="k">Providers</span><b>{{ provider_count }}</b></div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+</div>
+{% endblock %}

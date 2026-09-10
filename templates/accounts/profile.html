@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}My profile{% endblock %}
+{% block content %}
+<div class="page">
+  <div class="container container-narrow">
+    <div class="page-head reveal revealed">
+      <span class="eyebrow">Account</span>
+      <h1>My profile</h1>
+      <p>Update your personal details{% if user.is_provider %} and professional profile{% endif %}.</p>
+    </div>
+
+    <div class="profile-head card mb-2">
+      <div class="avatar avatar-lg" aria-hidden="true">{{ user.display_name|first|upper }}</div>
+      <div>
+        <h2 class="mb-0" style="font-size:1.25rem">{{ user.display_name }}</h2>
+        <p class="text-muted mb-0">{{ user.email }}</p>
+        <div class="chips mt-1">
+          <span class="chip active">{{ user.get_role_display }}</span>
+          {% if user.is_verified %}<span class="chip">✓ Verified</span>{% else %}<span class="chip">⚠ Not verified</span>{% endif %}
+          {% if user.is_provider and user.provider_profile.is_approved %}<span class="chip">✓ Approved pro</span>{% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h3>Personal details</h3></div>
+      <div class="panel-body">
+        <form method="post" enctype="multipart/form-data" novalidate>
+          {% csrf_token %}
+          <input type="hidden" name="profile" value="1">
+          {% for f in form %}
+          <div class="field {% if f.name == 'avatar' %}avatar-field{% endif %}">
+            <label for="{{ f.id_for_label }}">{{ f.label }}</label>
+            {{ f }}{{ f.errors }}
+            {% if f.help_text %}<div class="helptext">{{ f.help_text }}</div>{% endif %}
+          </div>
+          {% endfor %}
+          <button class="btn btn-primary" type="submit">Save changes</button>
+        </form>
+      </div>
+    </div>
+
+    {% if provider_form %}
+    <div class="panel">
+      <div class="panel-head">
+        <h3>Professional profile</h3>
+        <span class="chip">shown to customers</span>
+      </div>
+      <div class="panel-body">
+        <form method="post" novalidate>
+          {% csrf_token %}
+          <input type="hidden" name="provider" value="1">
+          <div class="field">
+            <label for="{{ provider_form.headline.id_for_label }}">Headline</label>
+            {{ provider_form.headline }}{{ provider_form.headline.errors }}
+            <div class="helptext">One line customers see first, e.g. “Master plumber, 12 yrs experience”.</div>
+          </div>
+          <div class="field">
+            <label for="{{ provider_form.bio.id_for_label }}">About you</label>
+            {{ provider_form.bio }}{{ provider_form.bio.errors }}
+          </div>
+          <div class="field">
+            <label>Categories you work in</label>
+            <div class="check-grid">
+              {% for choice in provider_form.categories %}
+              <label class="check-row">{{ choice.tag }} {{ choice.choice_label }}</label>
+              {% endfor %}
+            </div>
+            {{ provider_form.categories.errors }}
+          </div>
+          <div class="flex gap-sm wrap">
+            <div class="field grow">
+              <label for="{{ provider_form.hourly_rate.id_for_label }}">Hourly rate</label>
+              {{ provider_form.hourly_rate }}{{ provider_form.hourly_rate.errors }}
+            </div>
+            <div class="field grow">
+              <label for="{{ provider_form.years_experience.id_for_label }}">Years of experience</label>
+              {{ provider_form.years_experience }}{{ provider_form.years_experience.errors }}
+            </div>
+            <div class="field grow">
+              <label for="{{ provider_form.service_area.id_for_label }}">Service area</label>
+              {{ provider_form.service_area }}{{ provider_form.service_area.errors }}
+            </div>
+          </div>
+          <label class="check-row card-tight" style="padding-left:0">
+            {{ provider_form.is_available }} Set yourself as available for new bookings
+          </label>
+          <button class="btn btn-primary mt-1" type="submit">Save provider details</button>
+        </form>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
