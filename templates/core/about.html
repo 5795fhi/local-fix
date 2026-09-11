@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}About us{% endblock %}
+{% block content %}
+<div class="page">
+  <div class="container container-narrow">
+    <div class="page-head">
+      <span class="eyebrow">About</span>
+      <h1>Fixing homes, locally.</h1>
+      <p class="text-balance">{{ SITE_NAME }} connects households with trusted local professionals — electricians, plumbers, carpenters, appliance technicians and more — with transparent pricing and end-to-end tracking.</p>
+    </div>
+
+    <div class="grid grid-3 mb-2 stagger">
+      <div class="card reveal">
+        <div class="cat-icon" aria-hidden="true">🎯</div>
+        <h3>Our mission</h3>
+        <p>Make hiring a local pro as easy and safe as ordering a ride — verified people, clear quotes, secure payments.</p>
+      </div>
+      <div class="card reveal">
+        <div class="cat-icon" aria-hidden="true">🤝</div>
+        <h3>How we vet pros</h3>
+        <p>Every provider applies with their skills and service area, and our team approves each profile before it goes live in the directory.</p>
+      </div>
+      <div class="card reveal">
+        <div class="cat-icon" aria-hidden="true">🔒</div>
+        <h3>Your safety</h3>
+        <p>Accounts are OTP-verified, payments run through a secure gateway, and every booking keeps a full status history.</p>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h3>{{ SITE_NAME }} by the numbers</h3></div>
+      <div class="panel-body">
+        <div class="stat-grid" style="margin-bottom:0">
+          <div class="stat-card"><div class="label">Verified pros</div><div class="value">{{ provider_count }}</div></div>
+          <div class="stat-card"><div class="label">Jobs booked</div><div class="value">{{ booking_count }}</div></div>
+          <div class="stat-card"><div class="label">Service categories</div><div class="value">{{ category_count }}</div></div>
+          <div class="stat-card accent"><div class="label">Platform commission</div><div class="value">{{ commission_pct }}%</div><div class="hint">Only when work is paid</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cta-band">
+      <div>
+        <h2>Ready to try it?</h2>
+        <p class="mb-0" style="color:rgba(255,255,255,.75)">Create a free account, or browse the directory first — no account needed.</p>
+      </div>
+      <div class="flex gap-sm wrap">
+        <a href="{% url 'services:provider_directory' %}" class="btn btn-light btn-lg">Browse pros</a>
+        <a href="{% url 'accounts:register' %}" class="btn btn-primary btn-lg btn-sheen">Create account</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

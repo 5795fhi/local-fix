@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Privacy Policy{% endblock %}
+{% block content %}
+<div class="page">
+  <div class="container container-narrow">
+    <div class="page-head">
+      <span class="eyebrow">Legal</span>
+      <h1>Privacy Policy</h1>
+      <p>Last updated: September 2026 · Demo project — all data is fictional.</p>
+    </div>
+
+    <div class="panel">
+      <div class="panel-body legal-body">
+        <h3>1. What we collect</h3>
+        <p>Account basics (name, email, phone, optional avatar), your role on the platform, booking details (addresses, scheduled times, descriptions), messages you send through the platform, and transactional records for bookings and payments.</p>
+
+        <h3>2. How we use it</h3>
+        <p>To operate your account, deliver transactional email (verification codes, booking updates, security alerts), let providers and customers coordinate work, process payments and calculate payouts, and keep an audit trail for dispute resolution.</p>
+
+        <h3>3. Email you'll receive</h3>
+        <p>Transactional email only: one-time passcodes, a one-time welcome message, booking status updates relevant to you, and security notices (password or email changes). We do not send marketing email in this build.</p>
+
+        <h3>4. Who can see what</h3>
+        <p>Providers see the details of bookings made with them; customers see the details of bookings they made; platform administrators can view records to verify providers and moderate complaints. Nobody else.</p>
+
+        <h3>5. Cookies &amp; local storage</h3>
+        <p>We use session cookies for sign-in and security (CSRF), and a single local-storage key to remember your light/dark theme preference. No analytics or advertising trackers.</p>
+
+        <h3>6. Retention &amp; deletion</h3>
+        <p>Booking and payment records are retained for audit purposes. You can request account deletion via the contact form; personal data will be removed except where retention is required for financial records.</p>
+
+        <h3>7. Security</h3>
+        <p>Passwords are hashed, one-time passcodes expire quickly and are single-use, and access to bookings is limited to their participants. This demo stores data in a single database and is not hardened for production use.</p>
+
+        <p class="text-muted mt-2">Questions? <a href="{% url 'core:contact' %}" style="color:var(--brand-strong);font-weight:700">Contact us</a>.</p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

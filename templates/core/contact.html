@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Contact us{% endblock %}
+{% block content %}
+<div class="page">
+  <div class="container container-narrow">
+    <div class="page-head">
+      <span class="eyebrow">Contact</span>
+      <h1>Talk to us</h1>
+      <p>Questions, feedback or an issue with a booking — we read everything and reply by email.</p>
+    </div>
+
+    <div class="split">
+      <div class="panel">
+        <div class="panel-head"><h3>Send a message</h3></div>
+        <div class="panel-body">
+          <form method="post" novalidate>
+            {% csrf_token %}
+            <div class="field">
+              <label for="id_name">Your name</label>
+              <input class="input" type="text" id="id_name" name="name" required
+                     value="{{ request.POST.name|default:'' }}">
+            </div>
+            <div class="field">
+              <label for="id_email">Email address</label>
+              <input class="input" type="email" id="id_email" name="email" required
+                     value="{% if request.POST.email %}{{ request.POST.email }}{% elif user.is_authenticated %}{{ user.email }}{% endif %}">
+            </div>
+            <div class="field">
+              <label for="id_message">Message</label>
+              <textarea class="input" id="id_message" name="message" rows="5" required>{{ request.POST.message|default:'' }}</textarea>
+            </div>
+            <button class="btn btn-primary btn-block btn-sheen" type="submit">Send message</button>
+          </form>
+        </div>
+      </div>
+
+      <div>
+        <div class="card mb-2">
+          <h3 style="font-size:1.02rem">Other ways</h3>
+          <p class="text-muted" style="font-size:.92rem">Support replies within one business day.</p>
+          <div class="kv"><span class="k">Email</span><b>support@localfix.test</b></div>
+          <div class="kv"><span class="k">Hours</span><b>Mon–Fri, 9:00–17:00</b></div>
+        </div>
+        <div class="card">
+          <h3 style="font-size:1.02rem">Quick help</h3>
+          <p class="text-muted mb-1" style="font-size:.92rem">For booking disputes there's a faster path:</p>
+          {% if user.is_authenticated %}
+            <a href="{% url 'complaints:raise' %}" class="btn btn-ghost btn-block">Raise a complaint</a>
+          {% else %}
+            <a href="{% url 'accounts:login' %}" class="btn btn-ghost btn-block">Log in to raise a complaint</a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

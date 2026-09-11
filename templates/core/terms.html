@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Terms of Service{% endblock %}
+{% block content %}
+<div class="page">
+  <div class="container container-narrow">
+    <div class="page-head">
+      <span class="eyebrow">Legal</span>
+      <h1>Terms of Service</h1>
+      <p>Last updated: September 2026 · Demo project — all data is fictional.</p>
+    </div>
+
+    <div class="panel">
+      <div class="panel-body legal-body">
+        <h3>1. What LocalFix is</h3>
+        <p>{{ SITE_NAME }} is a marketplace that connects customers with independent service professionals (“providers”). We provide the platform, booking tools and payment flow; providers perform the services. We are not the employer of any provider.</p>
+
+        <h3>2. Accounts</h3>
+        <p>You must provide a valid email address and verify it via one-time passcode to activate your account. You are responsible for keeping your credentials confidential and for all activity under your account. Providers additionally require administrator approval before accepting bookings.</p>
+
+        <h3>3. Bookings &amp; quotes</h3>
+        <p>A booking is a request; it becomes binding only when the provider accepts it with a quoted price. Either party may cancel while the booking is in an open state; the full history of every status change is retained for dispute resolution.</p>
+
+        <h3>4. Payments</h3>
+        <p>Payment is due after the provider marks the work complete. {{ SITE_NAME }} charges a commission of {{ commission_pct }}% on completed bookings and pays the remainder to the provider. In this demo build, the payment gateway is a mock and no real money moves.</p>
+
+        <h3>5. Reviews</h3>
+        <p>Customers may leave one review per paid booking. Reviews must be truthful and may not contain unlawful content. We may remove reviews that violate these terms.</p>
+
+        <h3>6. Complaints &amp; disputes</h3>
+        <p>Both parties can raise a complaint on any booking. Our team triages complaints and may mediate, but the platform is not an arbiter of legal claims between you and a provider.</p>
+
+        <h3>7. Prohibited use</h3>
+        <p>Do not misuse the platform: no fraud, harassment, circumvention of payments, scraping, or attempts to breach other accounts or our infrastructure.</p>
+
+        <h3>8. Liability</h3>
+        <p>The service is provided “as is”. To the maximum extent permitted by law, {{ SITE_NAME }} is not liable for indirect or consequential damages arising from services arranged through the platform.</p>
+
+        <h3>9. Changes</h3>
+        <p>We may update these terms; significant changes will be announced in-app. Continuing to use {{ SITE_NAME }} after an update means you accept the revised terms.</p>
+
+        <p class="text-muted mt-2">Questions? <a href="{% url 'core:contact' %}" style="color:var(--brand-strong);font-weight:700">Contact us</a>.</p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
