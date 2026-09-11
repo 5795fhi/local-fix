@@ -9,6 +9,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from accounts.decorators import verified_required
+from accounts.emails import send_booking_email
 from bookings.models import Booking
 from notifications.models import Notification
 from .models import Payment
@@ -90,6 +91,7 @@ def pay(request, booking_id):
         f"You earned {payout} from booking #{booking.pk}.",
         url=reverse("bookings:detail", args=[booking.pk]),
     )
+    send_booking_email("paid", booking)
     messages.success(request, f"Payment of {amount} successful. Reference {payment.reference}.")
     return redirect("bookings:detail", pk=booking.pk)
 

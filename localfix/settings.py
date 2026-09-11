@@ -149,6 +149,29 @@ OTP_LENGTH = 6
 OTP_TTL_SECONDS = 5 * 60  # OTP valid for 5 minutes
 OTP_MAX_ATTEMPTS = 5
 
+# --- Email --------------------------------------------------------------------
+# Real SMTP delivery. Copy .env.example -> .env and fill in your provider's
+# credentials (Gmail app password, Brevo, Mailgun, SES...). With no EMAIL_HOST
+# set, mail falls back to the console backend so dev still works.
+EMAIL_BACKEND = os.environ.get(
+    "EMAIL_BACKEND",
+    "django.core.mail.backends.console.EmailBackend"
+    if DEBUG
+    else "django.core.mail.backends.smtp.EmailBackend",
+)
+EMAIL_HOST = os.environ.get("EMAIL_HOST", "")
+EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587") or 587)
+EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
+EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "True").lower() in ("1", "true", "yes")
+EMAIL_USE_SSL = os.environ.get("EMAIL_USE_SSL", "False").lower() in ("1", "true", "yes")
+EMAIL_TIMEOUT = int(os.environ.get("EMAIL_TIMEOUT", "10") or 10)
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "LocalFix <no-reply@localfix.test>")
+# Absolute base URL used in email links (set to your deployed domain in prod).
+SITE_BASE_URL = os.environ.get("SITE_BASE_URL", "http://127.0.0.1:8000")
+# Where contact-form messages are delivered.
+CONTACT_EMAIL = os.environ.get("CONTACT_EMAIL", "support@localfix.test")
+
 # Platform commission taken from each completed booking (percentage).
 PLATFORM_COMMISSION_PERCENT = 10
 

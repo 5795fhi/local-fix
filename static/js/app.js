@@ -1,6 +1,6 @@
 /* ============================================================================
    LocalFix shared behaviour — vanilla JS, no dependencies
-   Theme, drawer, scroll reveals, counters, toasts, nav state
+   Theme, drawer, scroll reveals, counters, toasts, nav state, password eyes
    ========================================================================== */
 (function () {
   "use strict";
@@ -18,6 +18,20 @@
     if (!toggle) return;
     root.dataset.theme = root.dataset.theme === "dark" ? "light" : "dark";
     localStorage.setItem("localfix-theme", root.dataset.theme);
+  });
+
+  /* ---------- Password visibility toggles ---------- */
+  document.addEventListener("click", function (e) {
+    var eye = e.target.closest("[data-pw-toggle]");
+    if (!eye) return;
+    var input = document.getElementById(eye.getAttribute("data-pw-toggle"));
+    if (!input) return;
+    var show = input.type === "password";
+    input.type = show ? "text" : "password";
+    eye.setAttribute("aria-pressed", show ? "true" : "false");
+    eye.setAttribute("aria-label", show ? "Hide password" : "Show password");
+    eye.textContent = show ? "🙈" : "👁";
+    input.focus({ preventScroll: true });
   });
 
   /* ---------- Mobile drawer ---------- */

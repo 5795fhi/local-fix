@@ -6,6 +6,7 @@ from django.urls import reverse
 from django.views.decorators.http import require_POST
 
 from accounts.decorators import verified_required
+from accounts.emails import send_booking_email
 from accounts.models import ProviderProfile
 from notifications.models import Notification
 from .forms import BookingForm, CancelForm, QuoteForm
@@ -45,6 +46,7 @@ def create_booking(request, provider_id):
                 f"{request.user.display_name} requested {booking.category}.",
                 url=reverse("bookings:detail", args=[booking.pk]),
             )
+            send_booking_email("requested", booking)
             messages.success(request, "Booking request sent to the provider.")
             return redirect("bookings:detail", pk=booking.pk)
     else:
@@ -117,6 +119,7 @@ def accept_booking(request, pk):
             f"{request.user.display_name} accepted your request for {booking.quoted_price}.",
             url=reverse("bookings:detail", args=[booking.pk]),
         )
+        send_booking_email("accepted", booking)
         messages.success(request, "Booking accepted and quote sent.")
     else:
         messages.error(request, "Please provide a valid quote.")
@@ -146,21 +149,29 @@ def _simple_transition(request, pk, target, allowed_actor, success_msg, notify_t
 @verified_required
 @require_POST
 def start_booking(request, pk):
-    return _simple_transition(
+    booking = get_object_or_404(Booking, pk=pk)
+    result = _simple_transition(
         request, pk, Booking.Status.IN_PROGRESS, "provider",
         "Job marked as in progress.", "customer",
         "Work started", "Your provider has started the job.",
     )
+    if request.method == "POST" and booking.status == Booking.Status.IN_PROGRESS:
+        send_booking_email("started", booking)
+    return result
 
 
 @verified_required
 @require_POST
 def complete_booking(request, pk):
-    return _simple_transition(
+    booking = get_object_or_404(Booking, pk=pk)
+    result = _simple_transition(
         request, pk, Booking.Status.COMPLETED, "provider",
         "Job marked complete. Awaiting payment.", "customer",
         "Job completed", "Your job is complete. Please proceed to payment.",
     )
+    if request.method == "POST" and booking.status == Booking.Status.COMPLETED:
+        send_booking_email("completed", booking)
+    return result
 
 
 @verified_required
@@ -181,6 +192,9 @@ def reject_booking(request, pk):
         booking.customer, "Booking declined",
         f"{booking.provider.display_name} declined your request.",
         url=reverse("bookings:detail", args=[booking.pk]),
+    )
+    send_booking_email(
+        "rejected", booking, extra_note=booking.cancel_reason or ""
     )
     messages.info(request, "Booking declined.")
     return redirect("bookings:detail", pk=pk)
@@ -205,6 +219,10 @@ def cancel_booking(request, pk):
         other, "Booking cancelled",
         f"{request.user.display_name} cancelled booking #{booking.pk}.",
         url=reverse("bookings:detail", args=[booking.pk]),
+    )
+    send_booking_email(
+        "cancelled", booking, actor=request.user,
+        extra_note=booking.cancel_reason or "",
     )
     messages.info(request, "Booking cancelled.")
     return redirect("bookings:detail", pk=pk)
