@@ -1,0 +1,7 @@
+Welcome to LocalFix, {{ user.first_name|default:"friend" }}!
+
+Your account is verified — you're all set.
+
+{{ blurb }}
+
+Get started: {{ cta_url }}

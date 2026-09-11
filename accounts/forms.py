@@ -1,6 +1,7 @@
 from django import forms
-from django.contrib.auth import get_user_model
+from django.contrib.auth import get_user_model, password_validation
 from django.contrib.auth.forms import AuthenticationForm
+from django.core.exceptions import ValidationError
 
 from services.models import ServiceCategory
 from .models import ProviderProfile
@@ -8,6 +9,10 @@ from .models import ProviderProfile
 User = get_user_model()
 
 _TEXT = {"class": "input"}
+_PASSWORD = {
+    "class": "input password-input",
+    "autocomplete": "current-password",
+}
 
 
 class RegisterForm(forms.ModelForm):
@@ -17,10 +22,16 @@ class RegisterForm(forms.ModelForm):
     )
     phone = forms.CharField(max_length=20, widget=forms.TextInput(attrs=_TEXT))
     password1 = forms.CharField(
-        label="Password", widget=forms.PasswordInput(attrs=_TEXT)
+        label="Password",
+        widget=forms.PasswordInput(
+            attrs={**_PASSWORD, "autocomplete": "new-password"}
+        ),
     )
     password2 = forms.CharField(
-        label="Confirm password", widget=forms.PasswordInput(attrs=_TEXT)
+        label="Confirm password",
+        widget=forms.PasswordInput(
+            attrs={**_PASSWORD, "autocomplete": "new-password"}
+        ),
     )
     role = forms.ChoiceField(
         choices=[
@@ -62,10 +73,12 @@ class RegisterForm(forms.ModelForm):
 class EmailLoginForm(AuthenticationForm):
     username = forms.EmailField(
         label="Email",
-        widget=forms.EmailInput(attrs={**_TEXT, "autofocus": True}),
+        widget=forms.EmailInput(
+            attrs={**_TEXT, "autofocus": True, "autocomplete": "email"}
+        ),
     )
     password = forms.CharField(
-        label="Password", widget=forms.PasswordInput(attrs=_TEXT)
+        label="Password", widget=forms.PasswordInput(attrs=_PASSWORD)
     )
 
 
@@ -81,6 +94,82 @@ class OTPForm(forms.Form):
             }
         ),
     )
+
+
+class PasswordChangeForm(forms.Form):
+    """Re-authenticate with the current password, then set a new one."""
+
+    current_password = forms.CharField(
+        label="Current password",
+        widget=forms.PasswordInput(attrs=_PASSWORD),
+    )
+    new_password1 = forms.CharField(
+        label="New password",
+        widget=forms.PasswordInput(
+            attrs={**_PASSWORD, "autocomplete": "new-password"}
+        ),
+    )
+    new_password2 = forms.CharField(
+        label="Confirm new password",
+        widget=forms.PasswordInput(
+            attrs={**_PASSWORD, "autocomplete": "new-password"}
+        ),
+    )
+
+    def __init__(self, user, *args, **kwargs):
+        self.user = user
+        super().__init__(*args, **kwargs)
+
+    def clean_current_password(self):
+        current = self.cleaned_data["current_password"]
+        if not self.user.check_password(current):
+            raise forms.ValidationError("Your current password is incorrect.")
+        return current
+
+    def clean_new_password2(self):
+        p1 = self.cleaned_data.get("new_password1")
+        p2 = self.cleaned_data.get("new_password2")
+        if p1 and p2 and p1 != p2:
+            raise forms.ValidationError("New passwords do not match.")
+        if p1:
+            password_validation.validate_password(p1, self.user)
+        return p2
+
+    def save(self):
+        self.user.set_password(self.cleaned_data["new_password1"])
+        self.user.save(update_fields=["password"])
+        return self.user
+
+
+class EmailChangeForm(forms.Form):
+    """Start an email change: verifies password, issues OTP to the new address."""
+
+    new_email = forms.EmailField(
+        label="New email address",
+        widget=forms.EmailInput(attrs={**_TEXT, "autocomplete": "email"}),
+    )
+    current_password = forms.CharField(
+        label="Confirm current password",
+        widget=forms.PasswordInput(attrs=_PASSWORD),
+    )
+
+    def __init__(self, user, *args, **kwargs):
+        self.user = user
+        super().__init__(*args, **kwargs)
+
+    def clean_new_email(self):
+        email = self.cleaned_data["new_email"].lower()
+        if email == self.user.email:
+            raise forms.ValidationError("That is already your current email.")
+        if User.objects.filter(email=email).exists():
+            raise forms.ValidationError("An account already uses this email.")
+        return email
+
+    def clean_current_password(self):
+        current = self.cleaned_data["current_password"]
+        if not self.user.check_password(current):
+            raise forms.ValidationError("Your current password is incorrect.")
+        return current
 
 
 class ProviderProfileForm(forms.ModelForm):

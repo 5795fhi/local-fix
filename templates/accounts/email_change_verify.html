@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Confirm new email{% endblock %}
+{% block content %}
+<div class="auth-wrap">
+  <div class="auth-card">
+    <div class="auth-brand"><span class="brand-mark">LF</span></div>
+    <h1>Confirm your new email</h1>
+    <p class="text-muted">We sent a code to <b>{{ target }}</b>. Enter it below to make it your sign-in email.</p>
+
+    <form method="post" novalidate>
+      {% csrf_token %}
+      <div class="field">
+        <label for="{{ form.code.id_for_label }}">Confirmation code</label>
+        {{ form.code }}
+        {{ form.code.errors }}
+      </div>
+      <button class="btn btn-primary btn-block" type="submit">Confirm email change</button>
+    </form>
+
+    <p class="auth-alt mb-0"><a href="{% url 'accounts:profile' %}">Cancel and go back to profile</a></p>
+  </div>
+</div>
+{% endblock %}

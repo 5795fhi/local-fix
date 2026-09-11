@@ -40,6 +40,76 @@
       </div>
     </div>
 
+    <div class="panel">
+      <div class="panel-head">
+        <h3>🔒 Password &amp; security</h3>
+        <span class="chip">keep it strong</span>
+      </div>
+      <div class="panel-body">
+        <form method="post" action="{% url 'accounts:change_password' %}" novalidate>
+          {% csrf_token %}
+          {% if password_form.non_field_errors %}
+            <div class="form-alert">{% for e in password_form.non_field_errors %}{{ e }}{% endfor %}</div>
+          {% endif %}
+          <div class="field">
+            <label for="{{ password_form.current_password.id_for_label }}">Current password</label>
+            <div class="password-wrap">
+              {{ password_form.current_password }}
+              <button type="button" class="pw-eye" data-pw-toggle="{{ password_form.current_password.id_for_label }}" aria-label="Show password" aria-pressed="false">👁</button>
+            </div>
+            {{ password_form.current_password.errors }}
+          </div>
+          <div class="flex gap-sm wrap">
+            <div class="field grow">
+              <label for="{{ password_form.new_password1.id_for_label }}">New password</label>
+              <div class="password-wrap">
+                {{ password_form.new_password1 }}
+                <button type="button" class="pw-eye" data-pw-toggle="{{ password_form.new_password1.id_for_label }}" aria-label="Show password" aria-pressed="false">👁</button>
+              </div>
+              {{ password_form.new_password1.errors }}
+              {% if password_form.new_password1.help_text %}<div class="helptext">{{ password_form.new_password1.help_text }}</div>{% endif %}
+            </div>
+            <div class="field grow">
+              <label for="{{ password_form.new_password2.id_for_label }}">Confirm new password</label>
+              <div class="password-wrap">
+                {{ password_form.new_password2 }}
+                <button type="button" class="pw-eye" data-pw-toggle="{{ password_form.new_password2.id_for_label }}" aria-label="Show password" aria-pressed="false">👁</button>
+              </div>
+              {{ password_form.new_password2.errors }}
+            </div>
+          </div>
+          <button class="btn btn-primary" type="submit">Update password</button>
+          <p class="helptext mt-1 mb-0">You'll stay signed in, and we'll email you a confirmation.</p>
+        </form>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <h3>📧 Email address</h3>
+        <span class="chip">{{ user.email }}</span>
+      </div>
+      <div class="panel-body">
+        <form method="post" action="{% url 'accounts:change_email' %}" novalidate>
+          {% csrf_token %}
+          <div class="field">
+            <label for="{{ email_form.new_email.id_for_label }}">New email address</label>
+            {{ email_form.new_email }}{{ email_form.new_email.errors }}
+            <div class="helptext">We'll send a confirmation code to the new address before switching.</div>
+          </div>
+          <div class="field">
+            <label for="{{ email_form.current_password.id_for_label }}">Confirm current password</label>
+            <div class="password-wrap">
+              {{ email_form.current_password }}
+              <button type="button" class="pw-eye" data-pw-toggle="{{ email_form.current_password.id_for_label }}" aria-label="Show password" aria-pressed="false">👁</button>
+            </div>
+            {{ email_form.current_password.errors }}
+          </div>
+          <button class="btn btn-ghost" type="submit">Change email</button>
+        </form>
+      </div>
+    </div>
+
     {% if provider_form %}
     <div class="panel">
       <div class="panel-head">

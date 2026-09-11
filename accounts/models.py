@@ -25,6 +25,11 @@ class User(AbstractUser):
         default=False, help_text="Whether the account has passed OTP verification."
     )
     avatar = models.ImageField(upload_to="avatars/", blank=True, null=True)
+    welcome_email_sent_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Set when the one-time welcome email has been delivered.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     USERNAME_FIELD = "email"
@@ -50,6 +55,12 @@ class User(AbstractUser):
     @property
     def display_name(self):
         return self.get_full_name() or self.email.split("@")[0]
+
+    def mark_welcome_email_sent(self):
+        from django.utils import timezone
+
+        self.welcome_email_sent_at = timezone.now()
+        self.save(update_fields=["welcome_email_sent_at"])
 
 
 class ProviderProfile(models.Model):
@@ -99,13 +110,18 @@ class OTP(models.Model):
         VERIFY = "verify", "Account verification"
         RESET = "reset", "Password reset"
         LOGIN = "login", "Login confirmation"
+        EMAIL_CHANGE = "email_change", "Email change"
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="otps"
     )
     code = models.CharField(max_length=10)
     purpose = models.CharField(
-        max_length=10, choices=Purpose.choices, default=Purpose.VERIFY
+        max_length=15, choices=Purpose.choices, default=Purpose.VERIFY
+    )
+    sent_to = models.EmailField(
+        blank=True,
+        help_text="Delivery address when the OTP was issued (e.g. a new email pending confirmation).",
     )
     attempts = models.PositiveIntegerField(default=0)
     is_used = models.BooleanField(default=False)

@@ -1,0 +1,10 @@
+{{ heading }} — LocalFix booking #{{ booking.pk }}
+
+{{ body }}
+
+Booking: #{{ booking.pk }} · {{ booking.category|default:"Service" }}
+Status: {{ status_label }}
+Scheduled: {{ booking.scheduled_for }}
+Amount: {{ booking.quoted_price }}
+
+View booking: {{ cta_url }}

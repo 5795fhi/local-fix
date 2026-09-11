@@ -1,0 +1,9 @@
+Confirm your new LocalFix email
+
+Hi {% if user.first_name %}{{ user.first_name }}{% else %}there{% endif %},
+
+Enter this code to confirm your new sign-in email. It expires in {{ ttl_minutes }} minutes.
+
+Code: {{ code }}
+
+Didn't request this change? Your current email stays active — ignore this message.

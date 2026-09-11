@@ -52,13 +52,27 @@
       <div class="flex gap-sm">
         <div class="field grow">
           <label for="{{ form.password1.id_for_label }}">Password</label>
-          {{ form.password1 }}{{ form.password1.errors }}
+          <div class="password-wrap">
+            {{ form.password1 }}
+            <button type="button" class="pw-eye" data-pw-toggle="{{ form.password1.id_for_label }}" aria-label="Show password" aria-pressed="false">👁</button>
+          </div>
+          {{ form.password1.errors }}
         </div>
         <div class="field grow">
           <label for="{{ form.password2.id_for_label }}">Confirm</label>
-          {{ form.password2 }}{{ form.password2.errors }}
+          <div class="password-wrap">
+            {{ form.password2 }}
+            <button type="button" class="pw-eye" data-pw-toggle="{{ form.password2.id_for_label }}" aria-label="Show password" aria-pressed="false">👁</button>
+          </div>
+          {{ form.password2.errors }}
         </div>
       </div>
+
+      <label class="check-row mb-2">
+        <input type="checkbox" name="terms" value="on" required>
+        I agree to the <a href="{% url 'core:terms' %}" target="_blank"><b>Terms</b></a> and
+        <a href="{% url 'core:privacy' %}" target="_blank"><b>Privacy Policy</b></a>.
+      </label>
 
       <button class="btn btn-primary btn-block btn-sheen" type="submit">Create account</button>
     </form>

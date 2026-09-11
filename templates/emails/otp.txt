@@ -1,0 +1,7 @@
+Your LocalFix {{ purpose|default:"verification" }} code: {{ code }}
+
+Hi {% if user.first_name %}{{ user.first_name }}{% else %}there {% endif %},
+
+Enter this code to continue. It expires in {{ ttl_minutes }} minutes.
+
+Didn't request it? You can safely ignore this email.

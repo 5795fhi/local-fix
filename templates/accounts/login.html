@@ -21,22 +21,18 @@
 
       <div class="field">
         <label for="{{ form.password.id_for_label }}">Password</label>
-        {{ form.password }}
+        <div class="password-wrap">
+          {{ form.password }}
+          <button type="button" class="pw-eye" data-pw-toggle="{{ form.password.id_for_label }}" aria-label="Show password" aria-pressed="false">👁</button>
+        </div>
         {{ form.password.errors }}
       </div>
 
       <button class="btn btn-primary btn-block btn-sheen" type="submit">Log in</button>
     </form>
 
-    <div class="auth-divider">demo accounts</div>
-    <div class="demo-creds">
-      <div><span class="chip">admin@localfix.test</span> <code>admin12345</code></div>
-      <div><span class="chip">casey.jordan@example.com</span> <code>customer12345</code></div>
-      <div><span class="chip">ava.turner@example.com</span> <code>provider12345</code></div>
-    </div>
-    <p class="auth-alt mb-0">Password = role + 12345 for the other demo accounts.</p>
-
-    <p class="auth-alt">New to {{ SITE_NAME }}? <a href="{% url 'accounts:register' %}">Create an account</a></p>
+    <p class="auth-alt mb-0">New to {{ SITE_NAME }}? <a href="{% url 'accounts:register' %}">Create an account</a></p>
+    <p class="auth-alt">Want to offer services? <a href="{% url 'accounts:register' %}?role=provider">Become a pro</a></p>
   </div>
 </div>
 {% endblock %}
