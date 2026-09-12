@@ -19,10 +19,24 @@ class ComplaintForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields["booking"].required = False
         if user is not None:
-            if user.is_provider:
-                self.fields["booking"].queryset = user.bookings_received.all()
-            else:
-                self.fields["booking"].queryset = user.bookings_made.all()
+            bookings = (
+                user.bookings_received.all()
+                if user.is_provider
+                else user.bookings_made.all()
+            ).select_related("provider", "customer", "category")
+            self.fields["booking"].queryset = bookings
+            self.fields["booking"].choices = [
+                ("", "---------"),
+                *(
+                    (
+                        b.pk,
+                        f"#{b.pk} · {b.category or 'Service'}"
+                        f" · with {(b.provider if not user.is_provider else b.customer).display_name}"
+                        f" · {b.scheduled_for:%d %b %Y}",
+                    )
+                    for b in bookings[:50]
+                ),
+            ]
 
 
 class ComplaintResolveForm(forms.ModelForm):

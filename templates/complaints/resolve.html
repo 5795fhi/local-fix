@@ -19,6 +19,13 @@
       {% if complaint.booking %}
         <p class="mb-0 mt-2"><span class="chip">Booking #{{ complaint.booking.pk }} · {{ complaint.booking.category }}</span></p>
       {% endif %}
+      {% if complaint.reported_professional_name %}
+      <hr class="divider">
+      <div class="kv"><span class="k">Professional reported</span><b>{{ complaint.reported_professional_name }}</b></div>
+      <div class="kv"><span class="k">Pro email</span><b style="font-size:.86rem">{{ complaint.reported_professional_email|default:"—" }}</b></div>
+      <div class="kv"><span class="k">Pro phone</span><b>{{ complaint.reported_professional_phone|default:"—" }}</b></div>
+      <div class="kv"><span class="k">Service</span><b>{{ complaint.reported_service|default:"—" }}</b></div>
+      {% endif %}
     </div>
 
     <div class="card">

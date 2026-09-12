@@ -23,6 +23,12 @@ class Complaint(models.Model):
         blank=True,
         related_name="complaints",
     )
+    # Snapshot of the professional being reported, kept even if the booking or
+    # provider account is later deleted.
+    reported_professional_name = models.CharField(max_length=120, blank=True)
+    reported_professional_email = models.EmailField(blank=True)
+    reported_professional_phone = models.CharField(max_length=20, blank=True)
+    reported_service = models.CharField(max_length=120, blank=True)
     subject = models.CharField(max_length=140)
     description = models.TextField()
     status = models.CharField(

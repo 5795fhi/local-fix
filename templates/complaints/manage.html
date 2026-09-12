@@ -24,6 +24,9 @@
         <div class="lead">
           <b>#{{ c.pk }} · {{ c.subject }}</b>
           <span>By {{ c.raised_by.display_name }}{% if c.booking %} · Booking #{{ c.booking.pk }}{% endif %} · {{ c.created_at|date:"M j, Y" }}</span>
+          {% if c.reported_professional_name %}
+          <span class="text-muted" style="font-size:.84rem">👷 Professional: <b>{{ c.reported_professional_name }}</b>{% if c.reported_service %} · {{ c.reported_service }}{% endif %}{% if c.reported_professional_phone %} · {{ c.reported_professional_phone }}{% endif %}</span>
+          {% endif %}
         </div>
         <div class="flex center gap-sm">
           <span class="badge badge-{{ c.status }}">{{ c.get_status_display }}</span>

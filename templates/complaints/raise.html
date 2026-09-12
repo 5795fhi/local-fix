@@ -2,7 +2,7 @@
 {% block title %}Raise a complaint{% endblock %}
 {% block content %}
 <div class="page">
-  <div class="container container-narrow">
+  <div class="container container-mid">
     <div class="page-head reveal revealed">
       <span class="eyebrow">Support</span>
       <h1>Raise a complaint</h1>
@@ -15,8 +15,19 @@
         {% if form.non_field_errors %}<div class="form-alert">{% for e in form.non_field_errors %}{{ e }}{% endfor %}</div>{% endif %}
 
         <div class="field">
-          <label for="{{ form.booking.id_for_label }}">Related booking (optional)</label>
+          <label for="{{ form.booking.id_for_label }}">Which booking is this about?</label>
           {{ form.booking }}{{ form.booking.errors }}
+          <div class="helptext">Selecting a booking lets us see which professional is involved.</div>
+        </div>
+
+        <div class="negotiate-box mb-2" id="pro-box" hidden>
+          <div class="flex between center wrap gap-sm">
+            <div>
+              <div class="eyebrow" style="margin-bottom:.2rem">Professional being reported</div>
+              <b id="pro-box-name">—</b>
+            </div>
+            <div class="text-muted" style="font-size:.86rem" id="pro-box-meta"></div>
+          </div>
         </div>
 
         <div class="field">
@@ -35,4 +46,31 @@
     </div>
   </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  /* Show the professional tied to the selected booking. */
+  (function () {
+    var select = document.getElementById("{{ form.booking.id_for_label }}");
+    var box = document.getElementById("pro-box");
+    var name = document.getElementById("pro-box-name");
+    var meta = document.getElementById("pro-box-meta");
+    var proMap = {{ pro_map_json|safe }};
+    if (!select) return;
+
+    function update() {
+      var info = proMap[select.value];
+      if (info) {
+        name.textContent = info.name;
+        meta.textContent = [info.service, info.when].filter(Boolean).join(" · ");
+        box.hidden = false;
+      } else {
+        box.hidden = true;
+      }
+    }
+    select.addEventListener("change", update);
+    update();
+  })();
+</script>
 {% endblock %}
