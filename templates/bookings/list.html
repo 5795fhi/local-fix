@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load humanize %}
 {% block title %}{% if user.is_provider %}My jobs{% else %}My bookings{% endif %}{% endblock %}
 {% block content %}
 <div class="page">
@@ -29,7 +30,7 @@
           <span>🗓 {{ b.scheduled_for|date:"D, M j Y · g:i A" }} &nbsp;·&nbsp; 📍 {{ b.address }}</span>
         </div>
         <div class="flex center gap wrap" style="justify-content:flex-end">
-          <b>{{ b.quoted_price }}</b>
+          <b>{{ b.quoted_price|floatformat:"0"|intcomma }}</b>
           <span class="badge badge-{{ b.status }}">{{ b.get_status_display }}</span>
           <a href="{% url 'bookings:detail' b.pk %}" class="btn btn-ghost btn-sm">View</a>
         </div>

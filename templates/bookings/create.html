@@ -35,7 +35,13 @@
           <div class="field">
             <label for="{{ form.scheduled_for.id_for_label }}">Preferred date &amp; time</label>
             {{ form.scheduled_for }}{{ form.scheduled_for.errors }}
-            <div class="helptext">Availability is verified before the request is confirmed.</div>
+            <div class="chips mt-1" id="quick-slots">
+              <button type="button" class="chip js-quick-slot" data-hours="3">Today +3h</button>
+              <button type="button" class="chip js-quick-slot" data-hours="26">Tomorrow morning</button>
+              <button type="button" class="chip js-quick-slot" data-hours="30">Tomorrow evening</button>
+              <button type="button" class="chip js-quick-slot" data-days="2" data-hour="11">Weekend 11 AM</button>
+            </div>
+            <div class="helptext">Pick a slot or choose any time in the next 60 days. Availability is confirmed by the pro before the request is accepted.</div>
           </div>
 
           <button class="btn btn-primary btn-block btn-lg btn-sheen" type="submit">Send booking request</button>
@@ -60,4 +66,34 @@
     </div>
   </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  /* Quick-pick slots for the datetime field. */
+  (function () {
+    var input = document.getElementById("{{ form.scheduled_for.id_for_label }}");
+    if (!input) return;
+    function fmt(d) {
+      var p = function (n) { return String(n).padStart(2, "0"); };
+      return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()) +
+        "T" + p(d.getHours()) + ":" + p(d.getMinutes());
+    }
+    document.querySelectorAll(".js-quick-slot").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var d = new Date();
+        if (btn.dataset.days) {
+          d.setDate(d.getDate() + parseInt(btn.dataset.days, 10));
+          d.setHours(parseInt(btn.dataset.hour || "11", 10), 0, 0, 0);
+          if (d.getTime() < Date.now() + 30 * 60 * 1000) d.setDate(d.getDate() + 7);
+        } else {
+          d = new Date(d.getTime() + parseInt(btn.dataset.hours, 10) * 3600 * 1000);
+          d.setMinutes(0, 0, 0);
+        }
+        input.value = fmt(d);
+        input.dispatchEvent(new Event("change", { bubbles: true }));
+      });
+    });
+  })();
+</script>
 {% endblock %}

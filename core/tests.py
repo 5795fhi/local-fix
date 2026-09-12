@@ -1,8 +1,18 @@
 from django.core import mail
 from django.test import TestCase, override_settings
 from django.urls import reverse
+from django.utils import timezone
 
 from accounts.models import OTP, ProviderProfile, User
+from bookings.models import Booking
+from complaints.models import Complaint
+
+import datetime
+
+
+def _future(days=3, hour=15):
+    d = timezone.now() + datetime.timedelta(days=days)
+    return d.replace(hour=hour, minute=0, second=0, microsecond=0)
 
 
 class ProviderApprovalTests(TestCase):
@@ -32,6 +42,30 @@ class ProviderApprovalTests(TestCase):
         self.assertRedirects(response, reverse("core:dashboard"))
         self.profile.refresh_from_db()
         self.assertTrue(self.profile.is_approved)
+
+    @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+    def test_approval_notifies_provider_once_with_email_and_notification(self):
+        from notifications.models import Notification
+
+        self.client.force_login(self.admin)
+        url = reverse("core:approve_provider", args=[self.profile.pk])
+
+        response = self.client.post(url)
+        self.assertRedirects(response, reverse("core:dashboard"))
+        # One approval email, announcing the approval.
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("approved", mail.outbox[0].subject.lower())
+        self.assertEqual(mail.outbox[0].to, [self.provider.email])
+        self.assertTrue(
+            Notification.objects.filter(
+                recipient=self.provider, title__icontains="approved"
+            ).exists()
+        )
+
+        # Approving again does not resend the welcome-to-the-platform email.
+        mail.outbox.clear()
+        self.client.post(url)
+        self.assertEqual(len(mail.outbox), 0)
 
     def test_non_admin_cannot_approve_provider(self):
         self.client.force_login(self.provider)
@@ -192,3 +226,180 @@ class AccountFlowTests(TestCase):
 
         # Old address receives a change notice (2 emails total now).
         self.assertEqual(len(mail.outbox), 2)
+
+
+class NegotiationTests(TestCase):
+    def setUp(self):
+        self.customer = User.objects.create_user(
+            email="cust@example.com", password="StrongPass123!", role=User.Role.CUSTOMER
+        )
+        self.customer.is_verified = True
+        self.customer.save(update_fields=["is_verified"])
+        self.provider = User.objects.create_user(
+            email="pro@example.com", password="StrongPass123!", role=User.Role.PROVIDER
+        )
+        self.provider.is_verified = True
+        self.provider.save(update_fields=["is_verified"])
+        self.booking = Booking.objects.create(
+            customer=self.customer,
+            provider=self.provider,
+            description="Leaking tap",
+            address="B-702, Andheri West",
+            scheduled_for=_future(),
+            quoted_price=500,
+        )
+
+    def _login(self, user):
+        self.client.force_login(user)
+
+    @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+    def test_professional_quotes_customer_negotiates_and_accepts(self):
+        self._login(self.provider)
+        response = self.client.post(
+            reverse("bookings:accept", args=[self.booking.pk]),
+            {"quoted_price": "650", "provider_note": "Includes new washer"},
+        )
+        self.assertRedirects(response, reverse("bookings:detail", args=[self.booking.pk]))
+        self.booking.refresh_from_db()
+        self.assertEqual(self.booking.quoted_price, 650)
+        self.assertEqual(self.booking.status, Booking.Status.ACCEPTED)
+        self.assertEqual(self.booking.last_offer_by, "")
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("accepted", mail.outbox[0].subject.lower())
+
+        # Customer makes the first negotiation offer.
+        self._login(self.customer)
+        response = self.client.post(
+            reverse("bookings:offer", args=[self.booking.pk]),
+            {"quoted_price": "600", "note": "Budget is 600"},
+        )
+        self.assertRedirects(response, reverse("bookings:detail", args=[self.booking.pk]))
+        self.booking.refresh_from_db()
+        self.assertEqual(self.booking.quoted_price, 600)
+        self.assertEqual(self.booking.last_offer_by, "customer")
+        self.assertEqual(len(mail.outbox), 2)  # offer + acceptance
+
+        # Professional accepts the customer's negotiated price.
+        self._login(self.provider)
+        response = self.client.post(reverse("bookings:accept_offer", args=[self.booking.pk]))
+        self.assertRedirects(response, reverse("bookings:detail", args=[self.booking.pk]))
+        self.booking.refresh_from_db()
+        self.assertEqual(self.booking.quoted_price, 600)
+        self.assertEqual(self.booking.last_offer_by, "")
+        self.assertEqual(self.booking.platform_fee, 60)
+        self.assertEqual(self.booking.provider_payout, 540)
+        self.assertEqual(len(mail.outbox), 3)
+
+    def test_customer_cannot_negotiate_before_professional_quotes(self):
+        self._login(self.customer)
+        response = self.client.post(
+            reverse("bookings:offer", args=[self.booking.pk]),
+            {"quoted_price": "400", "note": "Please reduce this"},
+        )
+        self.assertRedirects(response, reverse("bookings:detail", args=[self.booking.pk]))
+        self.booking.refresh_from_db()
+        self.assertEqual(self.booking.quoted_price, 500)
+        self.assertEqual(self.booking.last_offer_by, "")
+
+    @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+    def test_customer_decline_and_counter_updates_price(self):
+        # Provider offers 700 first.
+        self.booking.status = Booking.Status.ACCEPTED
+        self.booking.quoted_price = 700
+        self.booking.last_offer_by = "provider"
+        self.booking.save()
+
+        self._login(self.customer)
+        response = self.client.post(
+            reverse("bookings:decline_offer", args=[self.booking.pk]),
+            {"counter_price": "600", "note": "Budget is 600"},
+        )
+        self.assertRedirects(response, reverse("bookings:detail", args=[self.booking.pk]))
+        self.booking.refresh_from_db()
+        self.assertEqual(self.booking.quoted_price, 600)
+        self.assertEqual(self.booking.last_offer_by, "customer")
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("600", mail.outbox[0].subject)
+        self.assertIn("700", mail.outbox[0].body)
+
+        # Customer cannot accept their own offer.
+        response = self.client.post(reverse("bookings:accept_offer", args=[self.booking.pk]))
+        self.assertEqual(response.status_code, 302)  # redirect with an error flash
+        self.booking.refresh_from_db()
+        self.assertEqual(self.booking.last_offer_by, "customer")
+
+    def test_negotiation_blocked_in_late_states(self):
+        self.booking.status = Booking.Status.COMPLETED
+        self.booking.save()
+        self._login(self.customer)
+        response = self.client.post(
+            reverse("bookings:offer", args=[self.booking.pk]), {"quoted_price": "100"}
+        )
+        self.assertRedirects(response, reverse("bookings:detail", args=[self.booking.pk]))
+        self.booking.refresh_from_db()
+        self.assertEqual(self.booking.quoted_price, 500)
+
+    def test_negotiation_history_recorded(self):
+        self.booking.status = Booking.Status.ACCEPTED
+        self.booking.save(update_fields=["status"])
+        self._login(self.customer)
+        self.client.post(
+            reverse("bookings:offer", args=[self.booking.pk]), {"quoted_price": "650"}
+        )
+        note = self.booking.history.latest("created_at")
+        self.assertIn("650", note.note)
+
+
+class ComplaintProfessionalSnapshotTests(TestCase):
+    def setUp(self):
+        self.customer = User.objects.create_user(
+            email="cust2@example.com", password="StrongPass123!", role=User.Role.CUSTOMER,
+            first_name="Aarav", last_name="Sharma",
+        )
+        self.customer.is_verified = True
+        self.customer.save(update_fields=["is_verified"])
+        self.provider = User.objects.create_user(
+            email="pro2@example.com", password="StrongPass123!", role=User.Role.PROVIDER,
+            first_name="Vikram", last_name="Rao", phone="+919812345678",
+        )
+        self.provider.is_verified = True
+        self.provider.save(update_fields=["is_verified"])
+        self.booking = Booking.objects.create(
+            customer=self.customer,
+            provider=self.provider,
+            description="Fan repair",
+            address="12/A, Bandra West",
+            scheduled_for=_future(),
+            quoted_price=400,
+        )
+
+    @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+    def test_complaint_snapshots_the_reported_professional(self):
+        self.client.force_login(self.customer)
+        response = self.client.post(
+            reverse("complaints:raise"),
+            {
+                "booking": self.booking.pk,
+                "subject": "Job left unfinished",
+                "description": "The technician left before completing the repair.",
+            },
+        )
+        self.assertRedirects(response, reverse("complaints:my_complaints"))
+        complaint = Complaint.objects.get(subject="Job left unfinished")
+        self.assertEqual(complaint.reported_professional_name, "Vikram Rao")
+        self.assertEqual(complaint.reported_professional_email, "pro2@example.com")
+        self.assertEqual(complaint.reported_professional_phone, "+919812345678")
+
+        # Snapshot survives even if the provider account is deleted.
+        self.provider.delete()
+        complaint.refresh_from_db()
+        self.assertEqual(complaint.reported_professional_name, "Vikram Rao")
+
+    def test_complaint_without_booking_has_no_snapshot(self):
+        self.client.force_login(self.customer)
+        self.client.post(
+            reverse("complaints:raise"),
+            {"subject": "App issue", "description": "Dark mode toggle stuck."},
+        )
+        complaint = Complaint.objects.get(subject="App issue")
+        self.assertEqual(complaint.reported_professional_name, "")

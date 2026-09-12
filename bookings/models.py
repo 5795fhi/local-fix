@@ -58,6 +58,11 @@ class Booking(models.Model):
     address = models.CharField(max_length=255)
     scheduled_for = models.DateTimeField()
     quoted_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    last_offer_by = models.CharField(
+        max_length=10, blank=True,
+        choices=[("customer", "Customer"), ("provider", "Provider")],
+        help_text="Who made the most recent price offer during negotiation.",
+    )
     provider_note = models.TextField(blank=True)
     cancel_reason = models.CharField(max_length=255, blank=True)
 

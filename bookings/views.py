@@ -5,11 +5,13 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_POST
 
+from bookings.models import BookingStatusHistory
+
 from accounts.decorators import verified_required
-from accounts.emails import send_booking_email
+from accounts.emails import send_booking_email, send_negotiation_email
 from accounts.models import ProviderProfile
 from notifications.models import Notification
-from .forms import BookingForm, CancelForm, QuoteForm
+from .forms import BookingForm, CancelForm, DeclineOfferForm, OfferForm, QuoteForm
 from .models import Booking
 
 User = get_user_model()
@@ -85,12 +87,17 @@ def booking_detail(request, pk):
         pk=pk,
     )
     _require_participant(booking, request.user)
+    is_customer = request.user == booking.customer
     context = {
         "booking": booking,
         "history": booking.history.select_related("changed_by"),
         "quote_form": QuoteForm(initial={"quoted_price": booking.quoted_price}),
+        "offer_form": OfferForm(initial={"quoted_price": booking.quoted_price}),
+        "counter_form": DeclineOfferForm(initial={"counter_price": booking.quoted_price}),
         "cancel_form": CancelForm(),
         "payment": getattr(booking, "payment", None),
+        "me_role": "customer" if is_customer else "provider",
+        "other_party": booking.provider if is_customer else booking.customer,
     }
     return render(request, "bookings/detail.html", context)
 
@@ -143,6 +150,148 @@ def _simple_transition(request, pk, target, allowed_actor, success_msg, notify_t
         url=reverse("bookings:detail", args=[booking.pk]),
     )
     messages.success(request, success_msg)
+    return redirect("bookings:detail", pk=pk)
+
+
+# --- Price negotiation --------------------------------------------------------
+
+
+def _negotiation_guard(request, booking):
+    """Return (ok, error_response) for negotiation actions on a booking."""
+    _require_participant(booking, request.user)
+    if booking.status != Booking.Status.ACCEPTED:
+        messages.error(request, "This booking can no longer be renegotiated.")
+        return False, redirect("bookings:detail", pk=booking.pk)
+    return True, None
+
+
+@verified_required
+@require_POST
+def offer_price(request, pk):
+    """Let the customer make the first negotiation offer after the quote."""
+    booking = get_object_or_404(Booking, pk=pk)
+    ok, resp = _negotiation_guard(request, booking)
+    if not ok:
+        return resp
+    if request.user != booking.customer or booking.last_offer_by:
+        messages.error(request, "You can only make a new offer after the professional has quoted a price.")
+        return redirect("bookings:detail", pk=pk)
+    form = OfferForm(request.POST)
+    if not form.is_valid():
+        messages.error(request, "Enter a valid offer amount.")
+        return redirect("bookings:detail", pk=pk)
+
+    booking.quoted_price = form.cleaned_data["quoted_price"]
+    booking.last_offer_by = "customer"
+    note = form.cleaned_data.get("note", "")
+    if note:
+        booking.provider_note = note
+    booking.save(update_fields=["quoted_price", "last_offer_by", "provider_note", "updated_at"])
+
+    BookingStatusHistory.objects.create(
+        booking=booking,
+        from_status=booking.status,
+        to_status=booking.status,
+        changed_by=request.user,
+        note=f"Price offer ₹{booking.quoted_price:,.0f} — {note}" if note else f"Price offer ₹{booking.quoted_price:,.0f}",
+    )
+
+    other = booking.provider if request.user == booking.customer else booking.customer
+    Notification.notify(
+        other,
+        f"New price offer: ₹{booking.quoted_price:,.0f}",
+        f"{request.user.display_name} proposed ₹{booking.quoted_price:,.0f} for booking #{booking.pk}.",
+        url=reverse("bookings:detail", args=[booking.pk]),
+    )
+    send_negotiation_email(booking, offer_by=request.user, note=note)
+    messages.success(request, f"Offer of ₹{booking.quoted_price:,.0f} sent.")
+    return redirect("bookings:detail", pk=pk)
+
+
+@verified_required
+@require_POST
+def accept_offer(request, pk):
+    """The non-offering party locks the current quoted price."""
+    booking = get_object_or_404(Booking, pk=pk)
+    ok, resp = _negotiation_guard(request, booking)
+    if not ok:
+        return resp
+    if not booking.last_offer_by or booking.last_offer_by == (
+        "customer" if request.user == booking.customer else "provider"
+    ):
+        messages.error(request, "There is no pending offer from the other party to accept.")
+        return redirect("bookings:detail", pk=pk)
+
+    BookingStatusHistory.objects.create(
+        booking=booking,
+        from_status=booking.status,
+        to_status=booking.status,
+        changed_by=request.user,
+        note=f"Offer of ₹{booking.quoted_price:,.0f} accepted — final agreed price",
+    )
+    booking.last_offer_by = ""
+    booking.save(update_fields=["last_offer_by", "updated_at"])
+
+    other = booking.provider if request.user == booking.customer else booking.customer
+    Notification.notify(
+        other,
+        f"Offer accepted: ₹{booking.quoted_price:,.0f}",
+        f"{request.user.display_name} accepted ₹{booking.quoted_price:,.0f} as the final price for booking #{booking.pk}.",
+        url=reverse("bookings:detail", args=[booking.pk]),
+    )
+    send_negotiation_email(booking, offer_by=request.user, accepted=True)
+    messages.success(request, f"Deal — ₹{booking.quoted_price:,.0f} is the final agreed price.")
+    return redirect("bookings:detail", pk=pk)
+
+
+@verified_required
+@require_POST
+def decline_offer(request, pk):
+    """Reject the pending offer and counter with a different price."""
+    booking = get_object_or_404(Booking, pk=pk)
+    ok, resp = _negotiation_guard(request, booking)
+    if not ok:
+        return resp
+    if not booking.last_offer_by or booking.last_offer_by == (
+        "customer" if request.user == booking.customer else "provider"
+    ):
+        messages.error(request, "There is no pending offer from the other party to decline.")
+        return redirect("bookings:detail", pk=pk)
+
+    form = DeclineOfferForm(request.POST)
+    if not form.is_valid():
+        messages.error(request, "Enter your counter-offer amount.")
+        return redirect("bookings:detail", pk=pk)
+
+    old = booking.quoted_price
+    booking.quoted_price = form.cleaned_data["counter_price"]
+    booking.last_offer_by = "customer" if request.user == booking.customer else "provider"
+    note = form.cleaned_data.get("note", "")
+    if note:
+        booking.provider_note = note
+    booking.save(update_fields=["quoted_price", "last_offer_by", "provider_note", "updated_at"])
+
+    BookingStatusHistory.objects.create(
+        booking=booking,
+        from_status=booking.status,
+        to_status=booking.status,
+        changed_by=request.user,
+        note=f"Declined ₹{old:,.0f}, countered ₹{booking.quoted_price:,.0f}"
+        + (f" — {note}" if note else ""),
+    )
+
+    other = booking.provider if request.user == booking.customer else booking.customer
+    Notification.notify(
+        other,
+        f"Counter-offer: ₹{booking.quoted_price:,.0f}",
+        f"{request.user.display_name} declined ₹{old:,.0f} and countered ₹{booking.quoted_price:,.0f} on booking #{booking.pk}.",
+        url=reverse("bookings:detail", args=[booking.pk]),
+    )
+    send_negotiation_email(
+        booking, offer_by=request.user, note=note,
+        declined_old=old,
+    )
+    messages.success(request, f"Counter-offer of ₹{booking.quoted_price:,.0f} sent.")
     return redirect("bookings:detail", pk=pk)
 
 
