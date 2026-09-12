@@ -136,6 +136,69 @@ def send_email_changed_notice_email(user, old_email):
     )
 
 
+# --- Provider approval --------------------------------------------------------
+
+
+def send_provider_approved_email(user):
+    """Tell a professional their profile was approved; they're now bookable."""
+    return send_templated_email(
+        "provider_approved",
+        user.email,
+        {
+            "user": user,
+            "directory_url": _full("/services/providers/"),
+            "dashboard_url": _full("/dashboard/"),
+        },
+        subject="You're approved — customers can now book you on LocalFix",
+    )
+
+
+def send_negotiation_email(booking, offer_by, note="", accepted=False, declined_old=None):
+    """Tell the other party about a price offer / counter / acceptance."""
+    customer, provider = booking.customer, booking.provider
+    recipient = provider if offer_by.pk == customer.pk else customer
+    amount = f"₹{booking.quoted_price:,.0f}"
+
+    if accepted:
+        heading = f"Offer accepted — {amount} agreed"
+        body = (
+            f"{offer_by.display_name} accepted {amount} as the final price for "
+            f"booking #{booking.pk}. The commission and payout are now calculated "
+            f"from this agreed amount."
+        )
+    elif declined_old is not None:
+        heading = f"Counter-offer: {amount}"
+        body = (
+            f"{offer_by.display_name} declined ₹{declined_old:,.0f} and countered "
+            f"{amount} for booking #{booking.pk}."
+            + (f" Note: {note}" if note else "")
+        )
+    else:
+        label = "Customer" if offer_by.pk == customer.pk else "Professional"
+        heading = f"New price offer: {amount}"
+        body = (
+            f"{offer_by.display_name} ({label}) proposed {amount} for booking "
+            f"#{booking.pk}."
+            + (f" Note: {note}" if note else "")
+        )
+
+    return send_templated_email(
+        "negotiation",
+        recipient.email,
+        {
+            "user": recipient,
+            "other": offer_by,
+            "booking": booking,
+            "heading": heading,
+            "body": body,
+            "amount": amount,
+            "cta_url": _full(f"/bookings/{booking.pk}/"),
+            "status_label": booking.get_status_display(),
+        },
+        subject=f"{heading} · LocalFix booking #{booking.pk}",
+    )
+
+
 # --- Booking lifecycle --------------------------------------------------------
 
 

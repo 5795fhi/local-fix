@@ -1,4 +1,5 @@
 {% extends "emails/layout.html" %}
+{% load humanize %}
 {% block email_body %}
 <h2 style="margin:0 0 12px;font-size:22px;color:#101827;">{{ heading }}</h2>
 <p style="margin:0 0 20px;font-size:15px;line-height:1.6;color:#3c4657;">{{ body }}</p>
@@ -6,7 +7,7 @@
   <tr><td style="padding:10px 16px;border-bottom:1px dashed #e3e7ee;color:#5b6676;">Booking</td><td style="padding:10px 16px;text-align:right;font-weight:700;">#{{ booking.pk }} · {{ booking.category|default:"Service" }}</td></tr>
   <tr><td style="padding:10px 16px;border-bottom:1px dashed #e3e7ee;color:#5b6676;">Status</td><td style="padding:10px 16px;text-align:right;font-weight:700;">{{ status_label }}</td></tr>
   <tr><td style="padding:10px 16px;border-bottom:1px dashed #e3e7ee;color:#5b6676;">Scheduled</td><td style="padding:10px 16px;text-align:right;">{{ booking.scheduled_for }}</td></tr>
-  <tr><td style="padding:10px 16px;color:#5b6676;">Amount</td><td style="padding:10px 16px;text-align:right;">{{ booking.quoted_price }}</td></tr>
+  <tr><td style="padding:10px 16px;color:#5b6676;">Amount</td><td style="padding:10px 16px;text-align:right;">{{ booking.quoted_price|floatformat:"0"|intcomma }}</td></tr>
 </table>
 <div style="text-align:center;">
   <a href="{{ cta_url }}" style="display:inline-block;background:#101827;color:#ffffff;font-weight:700;font-size:15px;padding:13px 28px;border-radius:12px;text-decoration:none;">View booking</a>

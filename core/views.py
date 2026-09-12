@@ -4,11 +4,14 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.core.mail import send_mail
 from django.db.models import Avg, Count, Q, Sum
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.views.decorators.http import require_POST
 
+from accounts.emails import send_provider_approved_email
 from accounts.models import ProviderProfile
 from bookings.models import Booking
+from notifications.models import Notification
 from complaints.models import Complaint
 from payments.models import Payment
 from reviews.models import Review
@@ -116,7 +119,17 @@ def _admin_dashboard(request):
 def approve_provider(request, pk):
     if not request.user.is_platform_admin:
         return redirect("core:dashboard")
-    ProviderProfile.objects.filter(pk=pk).update(is_approved=True)
+    profile = get_object_or_404(ProviderProfile.objects.select_related("user"), pk=pk)
+    if not profile.is_approved:
+        profile.is_approved = True
+        profile.save(update_fields=["is_approved"])
+        Notification.notify(
+            profile.user,
+            "Profile approved 🎉",
+            "You're now a verified LocalFix professional — customers can book you.",
+            url=reverse("core:dashboard"),
+        )
+        send_provider_approved_email(profile.user)
     return redirect("core:dashboard")
 
 

@@ -1,0 +1,17 @@
+{% extends "emails/layout.html" %}
+{% block email_body %}
+<h2 style="margin:0 0 12px;font-size:22px;color:#101827;">You're approved, {{ user.first_name|default:"friend" }}! 🎉</h2>
+<p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#3c4657;">
+  Your professional profile has been verified and approved by the LocalFix team.
+</p>
+<p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:#3c4657;">
+  You now appear in the professional directory and customers can send you booking
+  requests. Keep your availability up to date so you only get requests you can take.
+</p>
+<div style="text-align:center;margin:0 0 8px;">
+  <a href="{{ dashboard_url }}" style="display:inline-block;background:#f59e0b;color:#ffffff;font-weight:700;font-size:15px;padding:13px 28px;border-radius:12px;text-decoration:none;">Open your dashboard</a>
+</div>
+<p style="margin:24px 0 0;text-align:center;font-size:13px;color:#5b6676;">
+  <a href="{{ directory_url }}" style="color:#d97706;">See how your profile looks in the directory →</a>
+</p>
+{% endblock %}

@@ -3,8 +3,8 @@
 {{ body }}
 
 Booking: #{{ booking.pk }} · {{ booking.category|default:"Service" }}
-Status: {{ status_label }}
+Current price on the table: {{ amount }}
 Scheduled: {{ booking.scheduled_for }}
-Amount: {{ booking.quoted_price|floatformat:"0"|intcomma }}
+Status: {{ status_label }}
 
-View booking: {{ cta_url }}
+Review the offer: {{ cta_url }}

@@ -10,7 +10,7 @@
     </div>
 
     <div class="profile-head card mb-2">
-      <div class="avatar avatar-lg" aria-hidden="true">{{ user.display_name|first|upper }}</div>
+      {% include "_avatar.html" with a_user=user a_class="avatar-lg" %}
       <div>
         <h2 class="mb-0" style="font-size:1.25rem">{{ user.display_name }}</h2>
         <p class="text-muted mb-0">{{ user.email }}</p>

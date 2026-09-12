@@ -35,10 +35,8 @@ def register(request):
         if form.is_valid():
             user = form.save()
             otp = OTP.issue(user, OTP.Purpose.VERIFY)
-            preview = send_otp(otp)
+            send_otp(otp)
             request.session["pending_user_id"] = user.id
-            if preview:
-                messages.info(request, f"Your verification code is {preview} (demo mode).")
             messages.success(
                 request, "Account created. We emailed you a verification code."
             )
@@ -57,12 +55,8 @@ class CustomLoginView(LoginView):
         user = form.get_user()
         if not user.is_verified and not user.is_superuser:
             otp = OTP.issue(user, OTP.Purpose.VERIFY)
-            preview = send_otp(otp)
+            send_otp(otp)
             self.request.session["pending_user_id"] = user.id
-            if preview:
-                messages.info(
-                    self.request, f"Your verification code is {preview} (demo mode)."
-                )
             messages.warning(self.request, "Verify your account to finish signing in.")
             return redirect("accounts:verify")
         return super().form_valid(form)
@@ -117,9 +111,7 @@ def resend_otp(request):
     user = User.objects.filter(pk=user_id).first()
     if user:
         otp = OTP.issue(user, OTP.Purpose.VERIFY)
-        preview = send_otp(otp)
-        if preview:
-            messages.info(request, f"Your new code is {preview} (demo mode).")
+        send_otp(otp)
         messages.success(request, "A new code has been emailed to you.")
     return redirect("accounts:verify")
 

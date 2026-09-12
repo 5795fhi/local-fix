@@ -1,0 +1,11 @@
+{% load humanize %}You're approved — customers can now book you on LocalFix
+
+Hi {{ user.first_name|default:"there" }},
+
+Your professional profile has been verified and approved by the LocalFix team.
+
+You now appear in the professional directory and customers can send you booking
+requests. Keep your availability up to date so you only get requests you can take.
+
+Dashboard: {{ dashboard_url }}
+Directory: {{ directory_url }}
