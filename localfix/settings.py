@@ -158,22 +158,6 @@ STORAGES = {
     "staticfiles": {"BACKEND": "whitenoise.storage.CompressedStaticFilesStorage"},
 }
 
-MEDIA_URL = "/media/"
-# Vercel's filesystem is ephemeral. Configure an S3-compatible bucket for
-# avatars/uploads in production; local development keeps using ./media.
-MEDIA_ROOT = os.environ.get("MEDIA_ROOT", BASE_DIR / "media")
-
-if os.environ.get("AWS_STORAGE_BUCKET_NAME"):
-    STORAGES["default"] = {
-        "BACKEND": "storages.backends.s3.S3Storage",
-    }
-    AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID", "")
-    AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY", "")
-    AWS_STORAGE_BUCKET_NAME = os.environ["AWS_STORAGE_BUCKET_NAME"]
-    AWS_S3_REGION_NAME = os.environ.get("AWS_S3_REGION_NAME", "") or None
-    AWS_S3_ENDPOINT_URL = os.environ.get("AWS_S3_ENDPOINT_URL", "") or None
-    AWS_QUERYSTRING_AUTH = os.environ.get("AWS_QUERYSTRING_AUTH", "False").lower() in ("1", "true", "yes")
-    AWS_DEFAULT_ACL = None
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 

@@ -535,6 +535,12 @@ a.cat-card:hover .cat-icon { transform: scale(1.1) rotate(-6deg); }
   border: 2px solid rgba(255, 255, 255, .25);
   box-shadow: var(--shadow-sm);
 }
+.avatar-default-1 { background: linear-gradient(135deg, #0ea5e9, #0369a1); }
+.avatar-default-2 { background: linear-gradient(135deg, #f59e0b, #b45309); }
+.avatar-default-3 { background: linear-gradient(135deg, #10b981, #047857); }
+.avatar-default-4 { background: linear-gradient(135deg, #8b5cf6, #6d28d9); }
+.avatar-default-5 { background: linear-gradient(135deg, #ef4444, #b91c1c); }
+.avatar-default-6 { background: linear-gradient(135deg, #14b8a6, #0f766e); }
 .avatar img {
   position: absolute; inset: 0;
   width: 100%; height: 100%; object-fit: cover; border-radius: inherit;

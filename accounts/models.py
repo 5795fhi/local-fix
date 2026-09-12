@@ -24,7 +24,6 @@ class User(AbstractUser):
     is_verified = models.BooleanField(
         default=False, help_text="Whether the account has passed OTP verification."
     )
-    avatar = models.ImageField(upload_to="avatars/", blank=True, null=True)
     welcome_email_sent_at = models.DateTimeField(
         null=True,
         blank=True,
@@ -55,6 +54,11 @@ class User(AbstractUser):
     @property
     def display_name(self):
         return self.get_full_name() or self.email.split("@")[0]
+
+    @property
+    def avatar_variant(self):
+        """Pick one of the built-in avatar palettes without storing a file."""
+        return ((self.pk or 0) % 6) + 1
 
     def mark_welcome_email_sent(self):
         from django.utils import timezone

@@ -202,7 +202,7 @@ class ProviderProfileForm(forms.ModelForm):
 class ProfileForm(forms.ModelForm):
     class Meta:
         model = User
-        fields = ["first_name", "last_name", "phone", "avatar"]
+        fields = ["first_name", "last_name", "phone"]
         widgets = {
             "first_name": forms.TextInput(attrs=_TEXT),
             "last_name": forms.TextInput(attrs=_TEXT),

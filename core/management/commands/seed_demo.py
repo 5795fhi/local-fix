@@ -5,16 +5,13 @@
 - Indian customers with realistic Mumbai addresses
 - INR pricing (₹ per hour / visit)
 - Bookings in every lifecycle state, payments, reviews, notifications
-- A locally generated avatar image for each seeded user (SVG letter-avatar,
-  saved under MEDIA_ROOT/avatars/), so profiles have real images without any
-  external download
+- Built-in letter avatars are used for seeded users, so no media files are needed.
 - Idempotent: re-running replaces the demo dataset (all @example.com users)
 """
 from datetime import timedelta
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
-from django.core.files.base import ContentFile
 from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.utils import timezone
@@ -125,30 +122,6 @@ CUSTOMERS = [
      "3, Krishna Kunj, Station Road, Borivali West"),
 ]
 
-_AVATAR_PALETTE = [
-    ("#0ea5e9", "#0369a1"), ("#f59e0b", "#b45309"), ("#10b981", "#047857"),
-    ("#8b5cf6", "#6d28d9"), ("#ef4444", "#b91c1c"), ("#14b8a6", "#0f766e"),
-    ("#f97316", "#c2410c"), ("#3b82f6", "#1d4ed8"), ("#ec4899", "#be185d"),
-    ("#22c55e", "#15803d"), ("#6366f1", "#4338ca"), ("#e11d48", "#9f1239"),
-]
-
-
-def _avatar_svg(initials, idx):
-    """A local SVG letter-avatar so seeded users have real images offline."""
-    c1, c2 = _AVATAR_PALETTE[idx % len(_AVATAR_PALETTE)]
-    safe = "".join(ch for ch in initials if ch.isalnum())[:2].upper() or "P"
-    return (
-        '<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160">'
-        f'<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">'
-        f'<stop offset="0" stop-color="{c1}"/><stop offset="1" stop-color="{c2}"/>'
-        "</linearGradient></defs>"
-        '<rect width="160" height="160" rx="80" fill="url(#g)"/>'
-        '<text x="80" y="84" text-anchor="middle" dominant-baseline="central" '
-        'font-family="Segoe UI, Arial, sans-serif" font-size="64" font-weight="700" '
-        f'fill="#ffffff">{safe}</text></svg>'
-    )
-
-
 class Command(BaseCommand):
     help = (
         "Seed LocalFix with Indian demo data: 48 pros on the Churchgate–Virar "
@@ -200,14 +173,12 @@ class Command(BaseCommand):
             )
             user.set_password("customer12345")
             user.save()
-            self._attach_avatar(user)
             customers.append(user)
         aarti, rohan, sanjana, meera = customers
         self.stdout.write(self.style.SUCCESS("Customers ready (password: customer12345)"))
 
         # ---------- Providers (48, Churchgate → Virar) ----------
         providers = {}
-        avatar_idx = 0
         for first, last, cats, headline, rate, station, years, approved in PROVIDERS:
             email = f"{first.lower()}.{last.lower()}@{DEMO_EMAIL_DOMAIN}"
             user = User.objects.create(
@@ -218,8 +189,6 @@ class Command(BaseCommand):
             )
             user.set_password("provider12345")
             user.save()
-            self._attach_avatar(user, avatar_idx)
-            avatar_idx += 1
 
             profile = user.provider_profile
             profile.headline = headline
@@ -420,16 +389,3 @@ class Command(BaseCommand):
         self._phone_seq = seq
         digits = (9000000000 + seq * 738197) % 10**10
         return f"+91{digits}"
-
-    def _attach_avatar(self, user, idx=0):
-        """Save a locally generated SVG letter-avatar for the user."""
-        if user.avatar:
-            return
-        initials = f"{user.first_name[:1]}{user.last_name[:1]}"
-        slug = user.email.split("@")[0]
-        svg = _avatar_svg(initials, idx)
-        user.avatar.save(
-            f"{slug}.svg",
-            ContentFile(svg.encode("utf-8")),
-            save=True,
-        )

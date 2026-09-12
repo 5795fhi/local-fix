@@ -54,7 +54,7 @@
                   {% if p.avatar %}
                   <img class="avatar" style="width:34px;height:34px;object-fit:cover" src="{{ p.avatar }}" alt="" loading="lazy" onerror="this.classList.add('hide')">
                   {% else %}
-                  <div class="avatar" style="width:34px;height:34px;font-size:.75rem" aria-hidden="true">{{ p.name|first|upper }}</div>
+                  <div class="avatar avatar-default-{{ p.avatar_variant|default:1 }}" style="width:34px;height:34px;font-size:.75rem" aria-hidden="true">{{ p.name|first|upper }}</div>
                   {% endif %}
                   <div>
                     <b>{{ p.name }}</b>
@@ -226,7 +226,7 @@
       var av = p.avatar
         ? Object.assign(document.createElement("img"), { src: p.avatar, alt: "", loading: "lazy" })
         : document.createElement("div");
-      av.className = "avatar";
+      av.className = "avatar avatar-default-" + (p.avatar_variant || 1);
       av.style.width = "34px";
       av.style.height = "34px";
       av.style.objectFit = "cover";
