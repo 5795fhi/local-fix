@@ -32,6 +32,19 @@ ALLOWED_HOSTS = [
     if h.strip()
 ]
 
+
+def _env_int(name, default):
+    """Read an integer env var; fall back to `default` when unset, empty or invalid.
+
+    Deploy panels (Vercel/Render) often contain variables that were created but
+    left blank; a bare int(os.environ[...]) would then crash at import time.
+    """
+    raw = os.environ.get(name, "")
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        return default
+
 CSRF_TRUSTED_ORIGINS = [
     o.strip()
     for o in os.environ.get(
@@ -102,7 +115,11 @@ _database_url = (
     or os.environ.get("POSTGRES_URL")
 )
 # Vercel functions should not hold database connections open between invocations.
-_db_conn_max_age = 0 if not DEBUG else 60
+# An empty Vercel environment variable must not crash settings import during
+# collectstatic; use zero unless an explicit value is supplied.
+_db_conn_max_age = int(
+    os.environ.get("DB_CONN_MAX_AGE") or "0"
+)
 if _database_url:
     DATABASES = {
         "default": dj_database_url.parse(
@@ -170,12 +187,12 @@ EMAIL_BACKEND = os.environ.get(
     else "django.core.mail.backends.smtp.EmailBackend",
 )
 EMAIL_HOST = os.environ.get("EMAIL_HOST", "")
-EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587") or 587)
+EMAIL_PORT = _env_int("EMAIL_PORT", 587)
 EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
 EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "True").lower() in ("1", "true", "yes")
 EMAIL_USE_SSL = os.environ.get("EMAIL_USE_SSL", "False").lower() in ("1", "true", "yes")
-EMAIL_TIMEOUT = int(os.environ.get("EMAIL_TIMEOUT", "10") or 10)
+EMAIL_TIMEOUT = _env_int("EMAIL_TIMEOUT", 10)
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "LocalFix <no-reply@localfix.test>")
 # Absolute base URL used in email links (set to your deployed domain in prod).
 SITE_BASE_URL = os.environ.get("SITE_BASE_URL", "http://127.0.0.1:8000")
