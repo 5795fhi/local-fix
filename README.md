@@ -130,30 +130,17 @@ Gmail notes: the "From" address must be your Gmail account or a verified alias.
 For production, prefer Brevo/Mailgun/SES over Gmail — Gmail throttles bulk mail
 and app passwords can be revoked.
 
-## Deploying to Render with MySQL
+## Deploying with Neon and Vercel
 
-The app auto-detects the database from `MYSQL_URL` (falls back to SQLite when
-unset — local dev needs no database setup). PyMySQL is bundled and installed as
-`MySQLdb` inside `localfix/settings.py`, so no C dependencies are required.
+Production uses Neon PostgreSQL through `NEON_DATABASE_URL`. SQLite is used only
+for local development when `DJANGO_DEBUG=True`.
 
-1. Push this repo to GitHub.
-2. On Render: **New → Blueprint**, select the repo — `render.yaml` provisions a
-   web service + a MySQL database and wires `MYSQL_URL` automatically. Or create
-   them manually:
-   - **New → MySQL** — create the database.
-   - **New → Web Service** — runtime Python, build `./build.sh`, start
-     `gunicorn localfix.wsgi:application --bind 0.0.0.0:$PORT`.
-3. Set the env vars listed in `render.yaml` (secret key is auto-generated;
-   `MYSQL_URL` is injected if you use the blueprint).
-4. `build.sh` runs migrations, collects static files and loads the demo seed on
-   first deploy. **After go-live, delete the `seed_demo` block from `build.sh`**
-   (it clears and recreates `@example.com` users on every deploy).
-5. Media uploads (avatars) need a **persistent disk**: mount at `/var/data` and
-   set `MEDIA_ROOT=/var/data/media`. On the free plan uploads vanish on redeploys.
-6. Set `SITE_BASE_URL` to your Render URL so links inside emails work.
-
-Prefer Postgres or Neon instead? Set `DATABASE_URL=postgres://…` — the settings
-support both schemes out of the box.
+1. Create a Neon PostgreSQL project and copy its pooled connection string.
+2. Import this GitHub repository into Vercel.
+3. Add `NEON_DATABASE_URL`, `DJANGO_SECRET_KEY`, `DJANGO_DEBUG=False`, SMTP
+   variables, and `SITE_BASE_URL` in Vercel Project Settings.
+4. Deploy, then run `python manage.py migrate --noinput` against Neon.
+5. See `VERCEL_DEPLOY.md` for the complete environment checklist.
 
 ## Tests
 

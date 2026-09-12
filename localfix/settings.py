@@ -9,6 +9,7 @@ from pathlib import Path
 import os
 
 import dj_database_url
+from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -93,45 +94,33 @@ TEMPLATES = [
 WSGI_APPLICATION = "localfix.wsgi.application"
 ASGI_APPLICATION = "localfix.asgi.application"
 
-# Database: external MySQL (PlanetScale/Aiven/Railway/...) via MYSQL_URL or
-# DATABASE_URL with a mysql:// scheme, Postgres via DATABASE_URL, or SQLite
-# fallback for local dev. See README "Deploying to Render with MySQL".
+# Database: Neon PostgreSQL in deployed environments, SQLite for local dev.
+# Set NEON_DATABASE_URL to the pooled or direct Neon connection string.
 _database_url = (
-    os.environ.get("MYSQL_URL")
-    or os.environ.get("CLEARDB_DATABASE_URL")
+    os.environ.get("NEON_DATABASE_URL")
     or os.environ.get("DATABASE_URL")
     or os.environ.get("POSTGRES_URL")
 )
+_db_conn_max_age = int(os.environ.get("DB_CONN_MAX_AGE", "0" if not DEBUG else "60"))
 if _database_url:
-    if _database_url.startswith(("mysql://", "mariadb://")):
-        import pymysql
-
-        pymysql.install_as_MySQLdb()
-        _db = dj_database_url.parse(_database_url, conn_max_age=600)
-        _db["ENGINE"] = "django.db.backends.mysql"
-        # Managed MySQL providers terminate TLS; point MYSQL_SSL_CA at their
-        # CA bundle (e.g. Aiven's ca.pem). Charset utf8mb4 for full Unicode.
-        _db.setdefault("OPTIONS", {})
-        _db["OPTIONS"]["charset"] = "utf8mb4"
-        _ca = os.environ.get("MYSQL_SSL_CA")
-        if _ca:
-            _db["OPTIONS"]["ssl"] = {"ca": _ca}
-        DATABASES = {"default": _db}
-    else:
-        DATABASES = {
-            "default": dj_database_url.parse(
-                _database_url,
-                conn_max_age=600,
-                ssl_require=True,
-            )
-        }
-else:
+    DATABASES = {
+        "default": dj_database_url.parse(
+            _database_url,
+            conn_max_age=_db_conn_max_age,
+            ssl_require=True,
+        )
+    }
+elif DEBUG:
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
             "NAME": BASE_DIR / "db.sqlite3",
         }
     }
+else:
+    raise ImproperlyConfigured(
+        "NEON_DATABASE_URL (or DATABASE_URL) must be set when DJANGO_DEBUG=False."
+    )
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},

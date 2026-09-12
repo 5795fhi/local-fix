@@ -7,7 +7,7 @@ and `localfix/wsgi.py`; `vercel.json` only defines the static collection build.
 
 Vercel Functions do not provide durable local storage, so configure:
 
-- A managed PostgreSQL database, exposed as `DATABASE_URL`.
+- A Neon PostgreSQL database, exposed as `NEON_DATABASE_URL`.
 - An SMTP provider for email.
 - A Groq API key if the AI assistant should use the hosted model.
 
@@ -20,7 +20,8 @@ DJANGO_SECRET_KEY=<long-random-secret>
 DJANGO_DEBUG=False
 DJANGO_ALLOWED_HOSTS=.vercel.app,your-domain.example
 DJANGO_CSRF_TRUSTED_ORIGINS=https://*.vercel.app,https://your-domain.example
-DATABASE_URL=postgresql://...
+NEON_DATABASE_URL=postgresql://...neon.tech/...?...sslmode=require
+DB_CONN_MAX_AGE=0
 SITE_BASE_URL=https://your-domain.example
 
 EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
@@ -42,7 +43,7 @@ LOCALFIX_AI_MODEL=openai/gpt-oss-20b
 2. Select the repository root as the project root and keep the Django framework preset.
 3. Add the environment variables above before the first production deployment.
 4. Deploy and check `/`, `/accounts/login/`, `/admin/`, and `/assistant/`.
-5. Run migrations against the production database from a trusted release environment:
+5. Run migrations against Neon from a trusted release environment:
 
    ```bash
    python manage.py migrate --noinput
