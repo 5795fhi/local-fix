@@ -115,11 +115,9 @@ _database_url = (
     or os.environ.get("POSTGRES_URL")
 )
 # Vercel functions should not hold database connections open between invocations.
-# An empty Vercel environment variable must not crash settings import during
-# collectstatic; use zero unless an explicit value is supplied.
-_db_conn_max_age = int(
-    os.environ.get("DB_CONN_MAX_AGE") or "0"
-)
+# An empty or malformed deployment variable must not crash settings import
+# during collectstatic; use zero unless a valid value is supplied.
+_db_conn_max_age = _env_int("DB_CONN_MAX_AGE", 0)
 if _database_url:
     DATABASES = {
         "default": dj_database_url.parse(
