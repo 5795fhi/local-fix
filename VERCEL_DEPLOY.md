@@ -21,7 +21,6 @@ DJANGO_DEBUG=False
 DJANGO_ALLOWED_HOSTS=.vercel.app,your-domain.example
 DJANGO_CSRF_TRUSTED_ORIGINS=https://*.vercel.app,https://your-domain.example
 NEON_DATABASE_URL=postgresql://...neon.tech/...?...sslmode=require
-DB_CONN_MAX_AGE=0
 SITE_BASE_URL=https://your-domain.example
 
 EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
