@@ -1,14 +1,15 @@
-"""Thin client for the Vercel AI Gateway (OpenAI-compatible chat completions).
+"""Chat completions via Groq (official ``groq`` SDK).
 
-The gateway exposes an OpenAI-style `/chat/completions` endpoint. On Vercel the
-`AI_GATEWAY_API_KEY` is injected automatically; locally set it in your `.env`.
-If no key is configured we fall back to a helpful rule-based reply so the
-assistant remains usable in development without credentials.
+Create a free key at https://console.groq.com/keys and set ``GROQ_API_KEY``
+in your environment (or ``.env``). If no key is configured we fall back to a
+helpful rule-based reply so the assistant remains usable in development
+without credentials.
 """
 import logging
+import re
 
-import requests
 from django.conf import settings
+from groq import Groq, GroqError
 
 logger = logging.getLogger("localfix.assistant")
 
@@ -18,70 +19,70 @@ SYSTEM_PROMPT = (
     "(electricians, plumbers, carpenters, cleaners, painters, and more). Help "
     "users describe their problem, pick the right service category, understand "
     "how booking, payment, reviews, and complaints work, and give practical, "
-    "safety-conscious home-maintenance advice. Keep answers concise and never "
-    "invent specific provider names, prices, or availability."
+    "safety-conscious home-maintenance advice. Keep answers concise. "
+    "When matching professionals are provided, summarise why they fit and invite "
+    "the user to tap Select & book, then give a date, time, and address. "
+    "Never invent specific provider names, prices, or availability."
 )
 
-_CATEGORY_HINTS = {
-    "leak": "plumbing", "pipe": "plumbing", "tap": "plumbing", "drain": "plumbing",
-    "toilet": "plumbing", "water": "plumbing",
-    "light": "electrical", "wiring": "electrical", "socket": "electrical",
-    "power": "electrical", "switch": "electrical", "fuse": "electrical",
-    "wood": "carpentry", "door": "carpentry", "furniture": "carpentry",
-    "cabinet": "carpentry", "shelf": "carpentry",
-    "clean": "cleaning", "dust": "cleaning", "tidy": "cleaning",
-    "paint": "painting", "wall": "painting",
-    "ac": "hvac", "heating": "hvac", "cooling": "hvac", "air": "hvac",
-}
+
+_MD_PATTERNS = [
+    (re.compile(r"\*\*(.+?)\*\*"), r"\1"),   # **bold**
+    (re.compile(r"__(.+?)__"), r"\1"),          # __bold__
+    (re.compile(r"(?<![\w*])\*(?![\s*])(.+?)(?<![\s*])\*(?![\w*])"), r"\1"),  # *italic*
+    (re.compile(r"`{1,3}([^`]*)`{1,3}"), r"\1"),  # inline & fenced code
+    (re.compile(r"^#{1,6}\s+", re.MULTILINE), ""),  # headings
+    (re.compile(r"^\s*[-*+]\s+", re.MULTILINE), "• "),  # bullets
+    (re.compile(r"\[(.+?)\]\((.+?)\)"), r"\1"),  # links -> text
+    (re.compile(r"^\|.*\|\s*$", re.MULTILINE), ""),  # table rows
+    (re.compile(r"\n{3,}"), "\n\n"),  # collapse gaps left by removed tables
+]
 
 
-def _fallback_reply(user_message):
-    text = user_message.lower()
-    for keyword, category in _CATEGORY_HINTS.items():
-        if keyword in text:
-            return (
-                f"It sounds like you need help with {category}. On LocalFix you can "
-                f"browse approved {category} professionals under Services, send a "
-                "booking request with your preferred time, and pay securely once the "
-                "job is complete. Would you like tips before booking?"
-            )
+def _plain_text(text):
+    """Strip markdown so chat bubbles stay readable plain text."""
+    for pattern, repl in _MD_PATTERNS:
+        text = pattern.sub(repl, text)
+    return re.sub(r"\n{3,}", "\n\n", text).strip()
+
+
+def _fallback_reply(user_message, provider_context=""):
+    if provider_context:
+        return (
+            "Here are approved LocalFix professionals who match what you described. "
+            "Pick one, then add the date, time, and job address to send a booking request."
+        )
     return (
         "I'm the LocalFix assistant. Tell me what needs fixing (for example a leaking "
-        "tap, a broken socket, or a room that needs painting) and I'll point you to "
-        "the right service category and explain how booking works."
+        "tap, a broken socket, or a room that needs painting) and I'll suggest a few "
+        "matching professionals you can book with your preferred date and time."
     )
 
 
-def chat_completion(messages):
+def chat_completion(messages, extra_system=""):
     """Return the assistant's reply text for a list of {role, content} messages."""
-    api_key = settings.AI_GATEWAY_API_KEY
+    api_key = settings.GROQ_API_KEY
     last_user = next(
         (m["content"] for m in reversed(messages) if m["role"] == "user"), ""
     )
 
     if not api_key:
-        logger.info("AI_GATEWAY_API_KEY not set; using rule-based fallback.")
-        return _fallback_reply(last_user)
+        logger.info("GROQ_API_KEY not set; using rule-based fallback.")
+        return _fallback_reply(last_user, extra_system)
 
-    payload = {
-        "model": settings.LOCALFIX_AI_MODEL,
-        "messages": [{"role": "system", "content": SYSTEM_PROMPT}, *messages],
-        "temperature": 0.4,
-        "max_tokens": 500,
-    }
+    system = SYSTEM_PROMPT
+    if extra_system:
+        system = f"{SYSTEM_PROMPT}\n\n{extra_system}"
+
     try:
-        resp = requests.post(
-            f"{settings.AI_GATEWAY_BASE_URL}/chat/completions",
-            headers={
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json",
-            },
-            json=payload,
-            timeout=30,
+        client = Groq(api_key=api_key)
+        resp = client.chat.completions.create(
+            model=settings.LOCALFIX_AI_MODEL,
+            messages=[{"role": "system", "content": system}, *messages],
+            temperature=0.4,
+            max_tokens=800,
         )
-        resp.raise_for_status()
-        data = resp.json()
-        return data["choices"][0]["message"]["content"].strip()
-    except (requests.RequestException, KeyError, IndexError, ValueError) as exc:
-        logger.warning("AI Gateway request failed: %s", exc)
-        return _fallback_reply(last_user)
+        return _plain_text(resp.choices[0].message.content or "")
+    except (GroqError, IndexError, AttributeError) as exc:
+        logger.warning("Groq request failed: %s", exc)
+        return _fallback_reply(last_user, extra_system)

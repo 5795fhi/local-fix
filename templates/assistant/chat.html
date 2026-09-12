@@ -1,16 +1,14 @@
 {% extends "base.html" %}
-{% load static %}
+{% load static humanize %}
 {% block title %}Assistant{% endblock %}
 {% block head %}
   <style>
-    /* Chat-specific fine-tuning layered on the design system */
     .chat-layout { height: calc(100vh - 68px - 3rem); }
   </style>
 {% endblock %}
 {% block content %}
 <div class="container container-fluid page" style="padding-bottom:1.5rem">
   <div class="chat-layout">
-    <!-- Conversations -->
     <aside class="chat-sidebar">
       <form method="post" action="{% url 'assistant:new' %}">
         {% csrf_token %}
@@ -31,14 +29,13 @@
       </div>
     </aside>
 
-    <!-- Chat window -->
     <div class="chat-main">
-      <div class="panel-head" style="border-bottom:1px solid var(--line)">
+      <div class="chat-header">
         <div class="flex center gap-sm">
-          <div class="avatar" style="width:36px;height:36px;font-size:.8rem" aria-hidden="true">AI</div>
+          <div class="chat-avatar" aria-hidden="true">LF</div>
           <div>
-            <b style="font-size:.95rem">{{ SITE_NAME }} Assistant</b>
-            <div class="text-muted" style="font-size:.76rem">Helps you scope jobs &amp; pick categories</div>
+            <b class="chat-title">{{ SITE_NAME }} Assistant</b>
+            <div class="text-muted" style="font-size:.76rem">Matches you with 3–4 pros and can place the booking</div>
           </div>
         </div>
         <span class="badge badge-paid">● Online</span>
@@ -47,23 +44,92 @@
       <div class="chat-messages" id="chat-messages">
         {% if conversation %}
           {% for m in conversation.messages.all %}
-          <div class="msg {{ m.role }}">
+          <div class="msg {{ m.role }}{% if m.meta.suggestions %} has-picks{% endif %}">
             {{ m.content }}
+            {% if m.meta.suggestions %}
+            <div class="pro-picks">
+              {% for p in m.meta.suggestions %}
+              <article class="pro-pick">
+                <div class="pro-pick-main">
+                  {% if p.avatar %}
+                  <img class="avatar" style="width:34px;height:34px;object-fit:cover" src="{{ p.avatar }}" alt="" loading="lazy" onerror="this.classList.add('hide')">
+                  {% else %}
+                  <div class="avatar" style="width:34px;height:34px;font-size:.75rem" aria-hidden="true">{{ p.name|first|upper }}</div>
+                  {% endif %}
+                  <div>
+                    <b>{{ p.name }}</b>
+                    <div class="text-muted" style="font-size:.78rem">{{ p.headline }}</div>
+                    <div class="pro-pick-meta">★ {{ p.rating }} ({{ p.reviews }}) · ₹{{ p.rate|floatformat:"0"|intcomma }}/hr · {{ p.area }}</div>
+                  </div>
+                </div>
+                {% if can_book %}
+                <button type="button" class="btn btn-primary btn-sm js-book-pro"
+                  data-provider-id="{{ p.id }}"
+                  data-category-id="{{ p.category_id }}"
+                  data-name="{{ p.name }}"
+                  data-suggested-for="{{ m.meta.suggested_for|default:'' }}">Select &amp; book</button>
+                {% endif %}
+              </article>
+              {% endfor %}
+            </div>
+            {% endif %}
+            {% if m.meta.booking_id %}
+            <a class="btn btn-ghost btn-sm mt-1" href="{% url 'bookings:detail' m.meta.booking_id %}">View booking #{{ m.meta.booking_id }}</a>
+            {% endif %}
             <span class="time">{{ m.created_at|date:"g:i A" }}</span>
           </div>
           {% endfor %}
         {% else %}
-        <div class="empty" style="margin:auto">
-          <span class="empty-ico">🧰</span>
+        <div class="chat-welcome">
+          <span class="chat-welcome-icon">✦</span>
           <b>Hi! I'm the LocalFix assistant.</b><br>
-          Tell me what needs fixing — e.g. “my kitchen tap is leaking” — and I'll point you to the right service.
+          Tell me what needs fixing — e.g. “leaking kitchen tap tomorrow at 3pm” — and I'll suggest a few matching professionals you can book.
+          <div class="chat-prompts" aria-label="Suggested prompts">
+            <button type="button" class="chat-prompt">Leaking tap tomorrow</button>
+            <button type="button" class="chat-prompt">AC not cooling</button>
+            <button type="button" class="chat-prompt">Need an electrician</button>
+          </div>
         </div>
         {% endif %}
       </div>
 
+      <form class="book-sheet" id="book-sheet" hidden>
+        <div class="book-sheet-head">
+          <b>Book <span id="book-pro-name">this pro</span></b>
+          <button type="button" class="conv-del" id="book-sheet-close" aria-label="Close">&times;</button>
+        </div>
+        <p class="text-muted" style="font-size:.8rem;margin:.2rem 0 .6rem">We’ll send a booking request with your date, time, and address. The pro confirms with a quote before you pay.</p>
+        <input type="hidden" name="provider_id" id="book-provider-id">
+        <input type="hidden" name="category_id" id="book-category-id">
+        <div class="book-sheet-grid">
+          <label class="grow">
+            <span class="label">Date &amp; time</span>
+            <input class="input" type="datetime-local" name="scheduled_for" id="book-when" required>
+            <div class="chips mt-1" id="book-quick-slots">
+              <button type="button" class="chip js-book-slot" data-hours="3">Today +3h</button>
+              <button type="button" class="chip js-book-slot" data-hours="26">Tomorrow AM</button>
+              <button type="button" class="chip js-book-slot" data-hours="30">Tomorrow PM</button>
+            </div>
+          </label>
+          <label class="grow">
+            <span class="label">Job address</span>
+            <input class="input" type="text" name="address" id="book-address" placeholder="Where should they come?" required>
+          </label>
+        </div>
+        <label>
+          <span class="label">What needs doing</span>
+          <textarea class="input" name="description" id="book-description" rows="2" required></textarea>
+        </label>
+        <button class="btn btn-primary btn-block" type="submit" id="book-submit">Send booking request</button>
+      </form>
+
       <form class="chat-input" id="chat-form">
-        <input class="input" type="text" name="message" id="chat-input" placeholder="Describe your problem…" autocomplete="off" aria-label="Message">
-        <button class="btn btn-primary" type="submit" id="chat-send">Send</button>
+        <div class="chat-input-wrap">
+          <label class="sr-only" for="chat-input">Message</label>
+          <textarea class="input" name="message" id="chat-input" rows="1" placeholder="Describe the job, location, or preferred time…" autocomplete="off" aria-label="Message"></textarea>
+          <span class="chat-input-hint">Enter to send · Shift + Enter for a new line</span>
+        </div>
+        <button class="btn btn-primary chat-send" type="submit" id="chat-send" aria-label="Send message">➤</button>
       </form>
     </div>
   </div>
@@ -77,14 +143,67 @@
   var input = document.getElementById("chat-input");
   var box = document.getElementById("chat-messages");
   var send = document.getElementById("chat-send");
+  var sheet = document.getElementById("book-sheet");
+  var canBook = {{ can_book|yesno:"true,false" }};
+  var lastJob = "";
   if (!form || !box) return;
 
   box.scrollTop = box.scrollHeight;
 
-  function addMsg(role, text, time) {
+  function resizeInput() {
+    input.style.height = "auto";
+    input.style.height = Math.min(input.scrollHeight, 132) + "px";
+  }
+  input.addEventListener("input", resizeInput);
+  input.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      form.requestSubmit();
+    }
+  });
+  document.querySelectorAll(".chat-prompt").forEach(function (prompt) {
+    prompt.addEventListener("click", function () {
+      input.value = prompt.textContent;
+      resizeInput();
+      input.focus();
+    });
+  });
+
+  function conversationId() {
+    var href = document.querySelector(".conv-item.active a");
+    if (href) {
+      var parts = href.getAttribute("href").split("/").filter(Boolean);
+      var id = parts[parts.length - 1];
+      if (!isNaN(id)) return id;
+    }
+    return "";
+  }
+
+  function toLocalInput(d) {
+    function pad(n) { return String(n).padStart(2, "0"); }
+    return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()) +
+      "T" + pad(d.getHours()) + ":" + pad(d.getMinutes());
+  }
+
+  function addMsg(role, text, time, extra) {
+    extra = extra || {};
+    var empty = box.querySelector(".chat-welcome");
+    if (empty) empty.remove();
     var div = document.createElement("div");
-    div.className = "msg " + role;
-    div.textContent = text;
+    div.className = "msg " + role + (extra.suggestions && extra.suggestions.length ? " has-picks" : "");
+    var body = document.createTextNode(text);
+    div.appendChild(body);
+    if (extra.suggestions && extra.suggestions.length) {
+      div.appendChild(renderPicks(extra.suggestions, extra.suggested_for || ""));
+    }
+    if (extra.booking_url) {
+      var link = document.createElement("a");
+      link.className = "btn btn-ghost btn-sm mt-1";
+      link.href = extra.booking_url;
+      link.textContent = extra.booking_id ? "View booking #" + extra.booking_id : "View booking";
+      div.appendChild(document.createElement("br"));
+      div.appendChild(link);
+    }
     if (time) {
       var t = document.createElement("span");
       t.className = "time";
@@ -96,10 +215,148 @@
     return div;
   }
 
+  function renderPicks(suggestions, suggestedFor) {
+    var wrap = document.createElement("div");
+    wrap.className = "pro-picks";
+    suggestions.forEach(function (p) {
+      var card = document.createElement("article");
+      card.className = "pro-pick";
+      var main = document.createElement("div");
+      main.className = "pro-pick-main";
+      var av = p.avatar
+        ? Object.assign(document.createElement("img"), { src: p.avatar, alt: "", loading: "lazy" })
+        : document.createElement("div");
+      av.className = "avatar";
+      av.style.width = "34px";
+      av.style.height = "34px";
+      av.style.objectFit = "cover";
+      if (av.tagName === "DIV") {
+        av.style.fontSize = ".75rem";
+        av.textContent = (p.name || "?").charAt(0).toUpperCase();
+      }
+      var info = document.createElement("div");
+      var name = document.createElement("b");
+      name.textContent = p.name;
+      var head = document.createElement("div");
+      head.className = "text-muted";
+      head.style.fontSize = ".78rem";
+      head.textContent = p.headline || "";
+      var meta = document.createElement("div");
+      meta.className = "pro-pick-meta";
+      meta.textContent = "★ " + p.rating + " (" + p.reviews + ") · \u20B9" + p.rate + "/hr · " + p.area;
+      info.appendChild(name);
+      info.appendChild(head);
+      info.appendChild(meta);
+      main.appendChild(av);
+      main.appendChild(info);
+      card.appendChild(main);
+      if (canBook) {
+        var btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "btn btn-primary btn-sm js-book-pro";
+        btn.textContent = "Select & book";
+        btn.dataset.providerId = p.id;
+        btn.dataset.categoryId = p.category_id || "";
+        btn.dataset.name = p.name;
+        btn.dataset.suggestedFor = suggestedFor || "";
+        card.appendChild(btn);
+      }
+      wrap.appendChild(card);
+    });
+    return wrap;
+  }
+
+  function openSheet(btn) {
+    if (!sheet) return;
+    document.getElementById("book-provider-id").value = btn.dataset.providerId;
+    document.getElementById("book-category-id").value = btn.dataset.categoryId || "";
+    document.getElementById("book-pro-name").textContent = btn.dataset.name || "this pro";
+    var when = document.getElementById("book-when");
+    if (btn.dataset.suggestedFor) when.value = btn.dataset.suggestedFor;
+    else if (!when.value) {
+      var soon = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      soon.setMinutes(0, 0, 0);
+      when.value = toLocalInput(soon);
+    }
+    var desc = document.getElementById("book-description");
+    if (!desc.value && lastJob) desc.value = lastJob;
+    sheet.hidden = false;
+    document.getElementById("book-address").focus();
+  }
+
+  box.addEventListener("click", function (e) {
+    var btn = e.target.closest(".js-book-pro");
+    if (btn) openSheet(btn);
+  });
+
+  /* Quick-pick slots for the booking sheet datetime. */
+  document.querySelectorAll(".js-book-slot").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var when = document.getElementById("book-when");
+      var d = new Date(Date.now() + parseInt(btn.dataset.hours, 10) * 3600 * 1000);
+      d.setMinutes(0, 0, 0);
+      when.value = toLocalInput(d);
+    });
+  });
+
+  /* Keep the datetime sane: nothing in the past. */
+  (function () {
+    var when = document.getElementById("book-when");
+    if (when) when.min = toLocalInput(new Date(Date.now() + 30 * 60 * 1000));
+  })();
+
+  var closeBtn = document.getElementById("book-sheet-close");
+  if (closeBtn) closeBtn.addEventListener("click", function () { sheet.hidden = true; });
+
+  if (sheet) {
+    sheet.addEventListener("submit", function (e) {
+      e.preventDefault();
+      var convId = conversationId();
+      if (!convId) {
+        addMsg("assistant", "Start a chat first, then pick a professional to book.");
+        return;
+      }
+      var submit = document.getElementById("book-submit");
+      submit.disabled = true;
+      var body = new URLSearchParams();
+      body.append("conversation_id", convId);
+      body.append("provider_id", document.getElementById("book-provider-id").value);
+      body.append("category_id", document.getElementById("book-category-id").value);
+      body.append("scheduled_for", document.getElementById("book-when").value);
+      body.append("address", document.getElementById("book-address").value);
+      body.append("description", document.getElementById("book-description").value);
+      fetch("{% url 'assistant:book' %}", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          "X-CSRFToken": "{{ csrf_token }}",
+        },
+        body: body.toString(),
+      })
+        .then(function (r) { return r.json().then(function (data) { return { ok: r.ok, data: data }; }); })
+        .then(function (res) {
+          if (!res.ok) {
+            addMsg("assistant", res.data.error || "Could not place that booking.");
+            return;
+          }
+          sheet.hidden = true;
+          addMsg("assistant", res.data.reply, res.data.created_at, {
+            booking_url: res.data.booking_url,
+            booking_id: res.data.booking_id,
+          });
+        })
+        .catch(function () {
+          addMsg("assistant", "Network hiccup — please try booking again.");
+        })
+        .finally(function () { submit.disabled = false; });
+    });
+  }
+
   form.addEventListener("submit", function (e) {
     e.preventDefault();
     var text = input.value.trim();
     if (!text) return;
+    lastJob = text;
 
     addMsg("user", text, new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
     input.value = "";
@@ -112,9 +369,7 @@
     box.appendChild(typing);
     box.scrollTop = box.scrollHeight;
 
-    var convId = new URLSearchParams(window.location.search).get("c") ||
-                 (document.querySelector(".conv-item.active a") ? document.querySelector(".conv-item.active a").getAttribute("href").split("/").filter(Boolean).pop() : "");
-
+    var convId = conversationId();
     var body = new URLSearchParams();
     body.append("message", text);
     if (convId && !isNaN(convId)) body.append("conversation_id", convId);
@@ -133,7 +388,10 @@
         if (data.error) {
           addMsg("assistant", "Sorry — " + data.error);
         } else {
-          addMsg("assistant", data.reply, data.created_at);
+          addMsg("assistant", data.reply, data.created_at, {
+            suggestions: data.suggestions || [],
+            suggested_for: data.suggested_for || "",
+          });
           if (data.conversation_id && !convId) {
             window.location.href = "{% url 'assistant:chat_detail' 0 %}".replace("/c/0/", "/c/" + data.conversation_id + "/");
           }
