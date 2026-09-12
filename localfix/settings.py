@@ -101,7 +101,9 @@ _database_url = (
     or os.environ.get("DATABASE_URL")
     or os.environ.get("POSTGRES_URL")
 )
-_db_conn_max_age = int(os.environ.get("DB_CONN_MAX_AGE", "0" if not DEBUG else "60"))
+_db_conn_max_age = int(
+    os.environ.get("DB_CONN_MAX_AGE") or ("0" if not DEBUG else "60")
+)
 if _database_url:
     DATABASES = {
         "default": dj_database_url.parse(
