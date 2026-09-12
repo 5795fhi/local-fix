@@ -12,13 +12,20 @@
   var saved = localStorage.getItem("localfix-theme");
   var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
   root.dataset.theme = saved || (prefersDark ? "dark" : "light");
+  syncThemeMeta();
 
   document.addEventListener("click", function (e) {
     var toggle = e.target.closest("[data-theme-toggle]");
     if (!toggle) return;
     root.dataset.theme = root.dataset.theme === "dark" ? "light" : "dark";
     localStorage.setItem("localfix-theme", root.dataset.theme);
+    syncThemeMeta();
   });
+
+  function syncThemeMeta() {
+    var meta = document.getElementById("meta-theme-color");
+    if (meta) meta.setAttribute("content", root.dataset.theme === "dark" ? "#0c1219" : "#ffffff");
+  }
 
   /* ---------- Password visibility toggles ---------- */
   document.addEventListener("click", function (e) {
@@ -62,13 +69,21 @@
     });
   }
 
-  /* ---------- Active nav link ---------- */
+  /* ---------- Active nav link (longest-prefix wins, exactly one) ---------- */
   var path = window.location.pathname;
+  var bestLink = null;
+  var bestLen = -1;
   document.querySelectorAll(".nav a, .drawer nav a").forEach(function (a) {
-    var href = a.getAttribute("href");
+    a.classList.remove("active");
+    var href = (a.getAttribute("href") || "").split("#")[0];
     if (!href || href === "#") return;
-    if (href === "/" ? path === "/" : path.indexOf(href) === 0) a.classList.add("active");
+    var matches = href === "/" ? path === "/" : path.indexOf(href) === 0;
+    if (matches && href.length > bestLen) {
+      bestLink = a;
+      bestLen = href.length;
+    }
   });
+  if (bestLink) bestLink.classList.add("active");
 
   /* ---------- Scroll reveals (IntersectionObserver) ---------- */
   var revealEls = document.querySelectorAll(".reveal");
@@ -172,8 +187,19 @@
   document.addEventListener("submit", function (e) {
     var form = e.target;
     var msg = form.getAttribute && form.getAttribute("data-confirm");
-    if (msg && !window.confirm(msg)) e.preventDefault();
-  });
+    if (msg && !window.confirm(msg)) { e.preventDefault(); return; }
+
+    /* Button loading state: spin the submitting button, ignore empty required fields. */
+    var btn = form.querySelector("button[type=submit]:not([formnovalidate])");
+    if (btn && typeof form.checkValidity === "function" && form.checkValidity()) {
+      btn.classList.add("is-loading");
+      btn.setAttribute("aria-busy", "true");
+      setTimeout(function () {
+        btn.classList.remove("is-loading");
+        btn.removeAttribute("aria-busy");
+      }, 8000);
+    }
+  }, true);
 
   /* ---------- Simple client-side helpers ---------- */
   /* Book buttons keep their own logic server-side; this only enhances UX. */

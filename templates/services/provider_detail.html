@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load humanize %}
 {% block title %}{{ profile.user.display_name }}{% endblock %}
 {% block content %}
 <div class="page">
@@ -7,7 +8,7 @@
       <div>
         <div class="card pd-head reveal revealed">
           <div class="flex gap center wrap">
-            <div class="avatar avatar-lg" aria-hidden="true">{{ profile.user.display_name|first|upper }}</div>
+            {% include "_avatar.html" with a_user=profile.user a_class="avatar-lg" %}
             <div class="grow">
               <div class="flex center gap-sm wrap">
                 <h1 class="mb-0">{{ profile.user.display_name }}</h1>
@@ -22,7 +23,7 @@
 
           <div class="pd-stats">
             <div><b>{{ profile.years_experience }}</b><span>yrs experience</span></div>
-            <div><b>{{ profile.hourly_rate }}</b><span>per hour</span></div>
+            <div><b>₹{{ profile.hourly_rate|floatformat:"0"|intcomma }}</b><span>per hour</span></div>
             <div><b>{{ profile.service_area|default:"Local" }}</b><span>service area</span></div>
             <div>
               {% if profile.is_available %}<span class="badge badge-paid">Available</span>
@@ -54,7 +55,7 @@
       <aside>
         <div class="card pd-cta">
           <h3>Book this pro</h3>
-          <div class="kv"><span class="k">Hourly rate</span><b>{{ profile.hourly_rate }}</b></div>
+          <div class="kv"><span class="k">Hourly rate</span><b>₹{{ profile.hourly_rate|floatformat:"0"|intcomma }}</b></div>
           <div class="kv"><span class="k">Experience</span><b>{{ profile.years_experience }} yrs</b></div>
           <div class="kv"><span class="k">Service area</span><b>{{ profile.service_area|default:"Local" }}</b></div>
           <div class="kv"><span class="k">Availability</span>

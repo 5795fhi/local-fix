@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load humanize %}
 {% block title %}Find a professional{% endblock %}
 {% block content %}
 <div class="page">
@@ -28,7 +29,7 @@
       {% for p in providers %}
       <div class="card provider-card card-hover">
         <div class="provider-top">
-          <div class="avatar" aria-hidden="true">{{ p.user.display_name|first|upper }}</div>
+          {% include "_avatar.html" with a_user=p.user %}
           <div class="grow">
             <b>{{ p.user.display_name }}</b>
             {% if p.is_approved %}<span class="tick" title="Verified by LocalFix">✓</span>{% endif %}
@@ -47,7 +48,7 @@
 
         <div class="flex between center" style="margin-top:auto;padding-top:.7rem">
           <div>
-            <b>{{ p.hourly_rate }}/hr</b>
+            <b>₹{{ p.hourly_rate|floatformat:"0"|intcomma }}/hr</b>
             <div class="meta">{% if p.is_available %}<span class="hi">Available now</span>{% else %}Currently busy{% endif %}</div>
           </div>
           <a href="{% url 'services:provider_detail' p.pk %}" class="btn btn-dark btn-sm">View profile</a>

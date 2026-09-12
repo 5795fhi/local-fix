@@ -87,7 +87,7 @@
         <h3>{{ category.name }}</h3>
         <p>{{ category.description|truncatewords:9 }}</p>
         <div class="price">
-          <span><span class="from">from</span> {{ category.base_price }}</span>
+          <span><span class="from">from</span> {{ category.base_price|floatformat:"0"|intcomma }}</span>
           <span class="chip">{{ category.provider_count }} pro{{ category.provider_count|pluralize }}</span>
         </div>
       </a>
@@ -153,7 +153,7 @@
       {% for p in top_providers %}
       <a class="card provider-card card-hover" href="{% url 'services:provider_detail' p.pk %}">
         <div class="provider-top">
-          <div class="avatar" aria-hidden="true">{{ p.user.display_name|first|upper }}</div>
+          {% include "_avatar.html" with a_user=p.user %}
           <div>
             <b>{{ p.user.display_name }}</b>
             {% if p.is_approved %}<span class="tick" title="Verified by LocalFix">✓</span>{% endif %}
@@ -168,7 +168,7 @@
           {% for c in p.categories.all|slice:":2" %}<span class="chip">{{ c.name }}</span>{% endfor %}
         </div>
         <div class="flex between center" style="margin-top:auto;padding-top:.6rem">
-          <b>{{ p.hourly_rate }}/hr</b>
+          <b>₹{{ p.hourly_rate|floatformat:"0"|intcomma }}/hr</b>
           <span class="btn btn-dark btn-sm">View profile</span>
         </div>
       </a>
@@ -213,7 +213,7 @@
     <div class="cta-band reveal">
       <div>
         <h2>Ready when you are</h2>
-        <p class="mb-0" style="color:rgba(255,255,255,.75)">Create a free account and book your first pro in minutes.</p>
+        <p class="mb-0 cta-sub">Create a free account and book your first pro in minutes.</p>
       </div>
       <div class="flex gap-sm wrap">
         <a href="{% url 'accounts:register' %}" class="btn btn-primary btn-lg btn-sheen">Create your account</a>

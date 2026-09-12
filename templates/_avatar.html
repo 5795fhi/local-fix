@@ -1,0 +1,6 @@
+{% if a_user %}
+<div class="avatar{% if a_class %} {{ a_class }}{% endif %}">
+  <span class="avatar-fallback" aria-hidden="true">{{ a_user.display_name|first|upper }}</span>
+  {% if a_user.avatar %}<img src="{{ a_user.avatar.url }}" alt="" loading="lazy" onerror="this.remove()">{% endif %}
+</div>
+{% endif %}

@@ -44,7 +44,7 @@
     <div class="pay-prompt mb-2" style="padding:1.1rem 1.3rem">
       <b>⏳ {{ awaiting_payment|length }} completed job{{ awaiting_payment|length|pluralize }} awaiting payment</b>
       <div class="flex gap-sm wrap mt-1">
-        {% for b in awaiting_payment %}<a href="{% url 'payments:checkout' b.pk %}" class="btn btn-primary btn-sm">Pay booking #{{ b.pk }} · {{ b.quoted_price }}</a>{% endfor %}
+        {% for b in awaiting_payment %}<a href="{% url 'payments:checkout' b.pk %}" class="btn btn-primary btn-sm">Pay booking #{{ b.pk }} · {{ b.quoted_price|floatformat:"0"|intcomma }}</a>{% endfor %}
       </div>
     </div>
     {% endif %}
