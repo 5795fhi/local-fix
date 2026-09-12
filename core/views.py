@@ -1,3 +1,5 @@
+import os
+
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import get_user_model
@@ -6,6 +8,7 @@ from django.core.mail import send_mail
 from django.db.models import Avg, Count, Q, Sum
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 
 from accounts.emails import send_provider_approved_email
@@ -184,6 +187,38 @@ def terms(request):
 
 def privacy(request):
     return render(request, "core/privacy.html")
+
+
+def version_info(request):
+    """Tiny deployment probe: reports which git revision is actually running.
+
+    Deploy platforms occasionally rebuild a stale commit (cache, old redeploy
+    button, monorepo root misconfig). Hitting /versionz/ after a deploy proves
+    which commit the live build came from.
+    """
+    import subprocess
+
+    def _git(*args):
+        try:
+            return subprocess.run(
+                ["git", *args], capture_output=True, text=True, timeout=5
+            ).stdout.strip()
+        except Exception:
+            return ""
+
+    commit = (
+        os.environ.get("VERCEL_GIT_COMMIT_SHA")
+        or os.environ.get("RENDER_GIT_COMMIT")
+        or _git("rev-parse", "--short", "HEAD")
+        or "unknown"
+    )
+    return JsonResponse(
+        {
+            "app": "localfix",
+            "commit": commit[:12],
+            "debug": settings.DEBUG,
+        }
+    )
 
 
 # --- Error handlers (referenced by handler404/handler500 in localfix.urls) ----
