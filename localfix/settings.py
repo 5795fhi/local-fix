@@ -23,7 +23,7 @@ SECRET_KEY = os.environ.get(
     "django-insecure-dev-key-change-in-production-0123456789abcdef",
 )
 
-DEBUG = os.environ.get("DJANGO_DEBUG", "True").lower() in ("1", "true", "yes")
+DEBUG = os.environ.get("DJANGO_DEBUG", "False").lower() in ("1", "true", "yes")
 
 ALLOWED_HOSTS = [
     h.strip()
@@ -93,16 +93,38 @@ TEMPLATES = [
 WSGI_APPLICATION = "localfix.wsgi.application"
 ASGI_APPLICATION = "localfix.asgi.application"
 
-# Database: Neon Postgres via DATABASE_URL, SQLite fallback for local dev.
-_database_url = os.environ.get("DATABASE_URL") or os.environ.get("POSTGRES_URL")
+# Database: external MySQL (PlanetScale/Aiven/Railway/...) via MYSQL_URL or
+# DATABASE_URL with a mysql:// scheme, Postgres via DATABASE_URL, or SQLite
+# fallback for local dev. See README "Deploying to Render with MySQL".
+_database_url = (
+    os.environ.get("MYSQL_URL")
+    or os.environ.get("CLEARDB_DATABASE_URL")
+    or os.environ.get("DATABASE_URL")
+    or os.environ.get("POSTGRES_URL")
+)
 if _database_url:
-    DATABASES = {
-        "default": dj_database_url.parse(
-            _database_url,
-            conn_max_age=600,
-            ssl_require=True,
-        )
-    }
+    if _database_url.startswith(("mysql://", "mariadb://")):
+        import pymysql
+
+        pymysql.install_as_MySQLdb()
+        _db = dj_database_url.parse(_database_url, conn_max_age=600)
+        _db["ENGINE"] = "django.db.backends.mysql"
+        # Managed MySQL providers terminate TLS; point MYSQL_SSL_CA at their
+        # CA bundle (e.g. Aiven's ca.pem). Charset utf8mb4 for full Unicode.
+        _db.setdefault("OPTIONS", {})
+        _db["OPTIONS"]["charset"] = "utf8mb4"
+        _ca = os.environ.get("MYSQL_SSL_CA")
+        if _ca:
+            _db["OPTIONS"]["ssl"] = {"ca": _ca}
+        DATABASES = {"default": _db}
+    else:
+        DATABASES = {
+            "default": dj_database_url.parse(
+                _database_url,
+                conn_max_age=600,
+                ssl_require=True,
+            )
+        }
 else:
     DATABASES = {
         "default": {
@@ -128,7 +150,7 @@ TIME_ZONE = "UTC"
 USE_I18N = True
 USE_TZ = True
 
-STATIC_URL = "static/"
+STATIC_URL = "/static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STORAGES = {
@@ -136,8 +158,22 @@ STORAGES = {
     "staticfiles": {"BACKEND": "whitenoise.storage.CompressedStaticFilesStorage"},
 }
 
-MEDIA_URL = "media/"
-MEDIA_ROOT = BASE_DIR / "media"
+MEDIA_URL = "/media/"
+# Vercel's filesystem is ephemeral. Configure an S3-compatible bucket for
+# avatars/uploads in production; local development keeps using ./media.
+MEDIA_ROOT = os.environ.get("MEDIA_ROOT", BASE_DIR / "media")
+
+if os.environ.get("AWS_STORAGE_BUCKET_NAME"):
+    STORAGES["default"] = {
+        "BACKEND": "storages.backends.s3.S3Storage",
+    }
+    AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID", "")
+    AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY", "")
+    AWS_STORAGE_BUCKET_NAME = os.environ["AWS_STORAGE_BUCKET_NAME"]
+    AWS_S3_REGION_NAME = os.environ.get("AWS_S3_REGION_NAME", "") or None
+    AWS_S3_ENDPOINT_URL = os.environ.get("AWS_S3_ENDPOINT_URL", "") or None
+    AWS_QUERYSTRING_AUTH = os.environ.get("AWS_QUERYSTRING_AUTH", "False").lower() in ("1", "true", "yes")
+    AWS_DEFAULT_ACL = None
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
@@ -175,12 +211,9 @@ CONTACT_EMAIL = os.environ.get("CONTACT_EMAIL", "support@localfix.test")
 # Platform commission taken from each completed booking (percentage).
 PLATFORM_COMMISSION_PERCENT = 10
 
-# AI assistant (Vercel AI Gateway).
-AI_GATEWAY_API_KEY = os.environ.get("AI_GATEWAY_API_KEY", "")
-AI_GATEWAY_BASE_URL = os.environ.get(
-    "AI_GATEWAY_BASE_URL", "https://ai-gateway.vercel.sh/v1"
-)
-LOCALFIX_AI_MODEL = os.environ.get("LOCALFIX_AI_MODEL", "openai/gpt-4o-mini")
+# AI assistant (Groq).
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
+LOCALFIX_AI_MODEL = os.environ.get("LOCALFIX_AI_MODEL", "openai/gpt-oss-20b")
 
 # Security hardening for production (behind HTTPS on Vercel).
 if not DEBUG:

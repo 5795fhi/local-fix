@@ -1,8 +1,11 @@
 Django>=5.0,<5.2
 psycopg[binary]>=3.1
+PyMySQL>=1.1
+cryptography>=42.0
 python-dotenv>=1.0
 dj-database-url>=2.1
-requests>=2.31
+groq>=0.11
 gunicorn>=21.2
 whitenoise>=6.6
 Pillow>=10.0
+django-storages[s3]>=1.14

@@ -1,0 +1,55 @@
+# Render Blueprint — deploy LocalFix with a managed MySQL database.
+# Docs: https://render.com/docs/blueprint-spec
+# After the first deploy, remove SEED_DEMO_ON_DEPLOY (or set it False).
+services:
+  - type: web
+    name: localfix-web
+    runtime: python
+    plan: starter          # free tier has no persistent disk; starter or above recommended
+    buildCommand: ./build.sh
+    startCommand: gunicorn localfix.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 60
+    healthCheckPath: /accounts/login/
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.7
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: DJANGO_DEBUG
+        value: "False"
+      - key: DJANGO_ALLOWED_HOSTS
+        value: ".onrender.com"
+      - key: DJANGO_CSRF_TRUSTED_ORIGINS
+        value: "https://*.onrender.com"
+      - key: MYSQL_URL
+        fromDatabase:
+          name: localfix-db
+          property: connectionString
+      - key: MYSQL_SSL_CA
+        value: ""          # Render MySQL works without a CA file; set one for Aiven/PlanetScale
+      - key: EMAIL_BACKEND
+        value: django.core.mail.backends.smtp.EmailBackend
+      - key: EMAIL_HOST
+        sync: false        # set your SMTP host in the Render dashboard
+      - key: EMAIL_PORT
+        value: "587"
+      - key: EMAIL_HOST_USER
+        sync: false
+      - key: EMAIL_HOST_PASSWORD
+        sync: false
+      - key: EMAIL_USE_TLS
+        value: "True"
+      - key: DEFAULT_FROM_EMAIL
+        sync: false
+      - key: SITE_BASE_URL
+        sync: false        # e.g. https://localfix-web.onrender.com
+      - key: CONTACT_EMAIL
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: SEED_DEMO_ON_DEPLOY
+        value: "True"
+
+databases:
+  - name: localfix-db
+    databaseName: localfix
+    plan: basic-256mb      # cheapest MySQL plan
