@@ -82,6 +82,16 @@ troubleshooting below).
 
 ## Troubleshooting
 
+- **Every page answers `400 Bad Request` (Vercel shows the Django function
+  running, e.g. "Route: /django", with a `Host: <app>-<hash>-<team>.vercel.app`)**
+  — Django rejected the host (`DisallowedHost`). `DJANGO_ALLOWED_HOSTS` on the
+  deployment was blank, pasted with a scheme, or listed only a custom domain,
+  so the `*.vercel.app` URL matched nothing. The code now always merges the
+  platform hosts, so this cannot happen again; during the window before that
+  fix is deployed, either clear the variable (the default includes
+  `.vercel.app`) or set it to `.vercel.app,your-domain.example` — no quotes, no
+  `https://` — then redeploy, because environment changes only apply to new
+  deployments.
 - **Build fails with `ValueError: invalid literal for int() ... DB_CONN_MAX_AGE`**
   — this crash is fully fixed in the current code (`manage.py` normalizes an
   empty value to `0`; `settings.py` parses numerics defensively). If you still
