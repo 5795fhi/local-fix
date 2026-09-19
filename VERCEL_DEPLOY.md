@@ -71,6 +71,15 @@ The `commit` must match the top of `git log` for the deployment you expect.
 If it shows an older commit, the deployment was built from stale code (see
 troubleshooting below).
 
+## Health checks
+
+- `GET /healthz/` — liveness. Proves the app is up; never touches the database,
+  so it stays green even during a database outage. Use this for uptime alerts.
+- `GET /healthz/db/` — readiness. Verifies database connectivity (with
+  latency), reports pending migrations as `"status": "degraded"`, and returns
+  HTTP 503 when the database is unreachable. Use this to confirm Neon is wired
+  up correctly after a deploy.
+
 ## Troubleshooting
 
 - **Build fails with `ValueError: invalid literal for int() ... DB_CONN_MAX_AGE`**
