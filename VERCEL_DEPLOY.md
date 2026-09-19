@@ -82,6 +82,25 @@ troubleshooting below).
 
 ## Troubleshooting
 
+- **Any page answers `500` with `relation "accounts_providerprofile" does not exist`**
+  (or a similar missing table) — the database Vercel points at has no schema yet.
+  The build command now runs `python manage.py migrate --noinput`, so a new
+  deployment fixes it automatically. To apply it without a rebuild, run the
+  migration against the same URL the deployment uses:
+
+  ```bash
+  NEON_DATABASE_URL="<the production connection string>" python manage.py migrate --noinput
+  ```
+
+  Remove `migrate` from `buildCommand` if you prefer to run migrations by hand
+  with a release step; leaving it in means every deploy keeps the schema current.
+- **`/contact/` answers 500 with `ValueError: Invalid address "..."`** — a
+  configured address (`CONTACT_EMAIL` / `DEFAULT_FROM_EMAIL`) or a visitor's
+  input ended with a trailing dot, which Django's mail sanitizer rejects even
+  with `fail_silently`. Addresses from the environment are now normalized in
+  `settings.py`, the contact form validates visitor input, and delivery
+  failures are logged instead of raising. If it still appears, check the
+  variable's value for stray quotes, a leading `https://` or a trailing dot.
 - **Every page answers `400 Bad Request` (Vercel shows the Django function
   running, e.g. "Route: /django", with a `Host: <app>-<hash>-<team>.vercel.app`)**
   — Django rejected the host (`DisallowedHost`). `DJANGO_ALLOWED_HOSTS` on the

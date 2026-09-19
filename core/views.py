@@ -7,7 +7,11 @@ from django.contrib.auth.decorators import login_required
 from django.core.mail import send_mail
 from django.db.models import Avg, Count, Q, Sum
 from django.shortcuts import get_object_or_404, redirect, render
+import logging
+
 from django.urls import reverse
+from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
 from django.http import JsonResponse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
@@ -22,6 +26,8 @@ from reviews.models import Review
 from services.models import ServiceCategory
 
 User = get_user_model()
+
+logger = logging.getLogger("localfix.core")
 
 
 def home(request):
@@ -151,34 +157,53 @@ def about(request):
     return render(request, "core/about.html", context)
 
 
+def _clean_visitor_email(raw):
+    """Trim whitespace and stray trailing dots ("name@gmail.com.") from input."""
+    email = (raw or "").strip().strip("<>").strip()
+    while email.endswith("."):
+        email = email[:-1].strip()
+    return email
+
+
 def contact(request):
     if request.method == "POST":
         name = request.POST.get("name", "").strip()
-        email = request.POST.get("email", "").strip()
+        email = _clean_visitor_email(request.POST.get("email", ""))
         message = request.POST.get("message", "").strip()
         if not name or not email or not message:
             messages.error(request, "Please fill in every field.")
-        elif "@" not in email:
+            return render(request, "core/contact.html")
+        try:
+            validate_email(email)
+        except ValidationError:
             messages.error(request, "Please enter a valid email address.")
-        else:
+            return render(request, "core/contact.html")
+
+        sent = False
+        try:
             sent = send_mail(
                 f"LocalFix contact form — {name}",
                 f"From: {name} <{email}>\n\n{message}",
                 settings.DEFAULT_FROM_EMAIL,
                 [settings.CONTACT_EMAIL],
-                fail_silently=True,
+                fail_silently=False,
             )
-            if sent:
-                messages.success(
-                    request, "Thanks! Your message has been sent — we'll reply soon."
-                )
-            else:
-                messages.info(
-                    request,
-                    "Thanks! Your message was recorded, but email delivery is not "
-                    "configured yet — we'll still follow up.",
-                )
-            return redirect("core:contact")
+        except Exception:
+            # A malformed configured address or an SMTP outage must never turn
+            # the public contact form into a 500 page.
+            logger.exception("Contact form submission could not be emailed")
+
+        if sent:
+            messages.success(
+                request, "Thanks! Your message has been sent — we'll reply soon."
+            )
+        else:
+            messages.info(
+                request,
+                "Thanks! Your message was recorded, but email delivery is not "
+                "configured yet — we'll still follow up.",
+            )
+        return redirect("core:contact")
     return render(request, "core/contact.html")
 
 

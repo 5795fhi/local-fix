@@ -22,31 +22,47 @@ DEFAULT_FROM = getattr(
 REPLY_TO = [settings.ADMINS[0][1]] if getattr(settings, "ADMINS", None) else None
 
 
+def _clean_address(raw):
+    """Normalize an address before it reaches the mail sanitizer.
+
+    A trailing dot ("user@example.com.") raises ValueError inside Django's
+    ``sanitize_address`` — even with fail_silently — so it is removed here
+    for both recipients and the display-name form.
+    """
+    value = (raw or "").strip().strip('"').strip("'").strip()
+    if "<" in value and value.endswith(">"):
+        name, addr = value.rsplit("<", 1)
+        return f"{name.strip()} <{addr[:-1].strip().rstrip('.').strip()}>"
+    return value.rstrip(".")
+
+
 def send_templated_email(name, to_email, context, subject=None):
     """Render ``emails/<name>.html`` + ``.txt`` and send them.
 
-    Returns True when the message was handed to the email backend.
+    Returns True when the message was handed to the email backend. Rendering
+    and sending are both guarded: no template problem, malformed address or
+    SMTP outage may propagate to the request that triggered the email.
     """
-    to_email = to_email or ""
+    to_email = _clean_address(to_email)
     if not to_email:
         logger.warning("Templated email %s skipped: no recipient.", name)
         return False
 
-    ctx = {"SITE_NAME": "LocalFix", "site_url": _site_url(), **(context or {})}
-    subject = subject or render_to_string(
-        f"emails/{name}_subject.txt", ctx
-    ).strip()
-    html_body = render_to_string(f"emails/{name}.html", ctx)
-    text_body = render_to_string(f"emails/{name}.txt", ctx)
-
-    message = EmailMultiAlternatives(
-        subject, text_body, DEFAULT_FROM, [to_email],
-        reply_to=REPLY_TO or [],
-    )
-    message.attach_alternative(html_body, "text/html")
     try:
+        ctx = {"SITE_NAME": "LocalFix", "site_url": _site_url(), **(context or {})}
+        subject = subject or render_to_string(
+            f"emails/{name}_subject.txt", ctx
+        ).strip()
+        html_body = render_to_string(f"emails/{name}.html", ctx)
+        text_body = render_to_string(f"emails/{name}.txt", ctx)
+
+        message = EmailMultiAlternatives(
+            subject, text_body, _clean_address(DEFAULT_FROM), [to_email],
+            reply_to=[_clean_address(a) for a in (REPLY_TO or [])],
+        )
+        message.attach_alternative(html_body, "text/html")
         sent = message.send()
-    except Exception:  # pragma: no cover - backend misconfiguration
+    except Exception:  # template, address or backend problem
         logger.exception("Failed to send %s email to %s", name, to_email)
         return False
     if not sent:

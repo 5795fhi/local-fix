@@ -102,6 +102,37 @@ class StaticPagesTests(TestCase):
         self.assertEqual(len(mail.outbox), 1)
         self.assertIn("Casey", mail.outbox[0].body)
 
+    def test_contact_form_cleans_trailing_dot_email(self):
+        """A trailing dot used to 500 the page inside Django's sanitizer."""
+        response = self.client.post(
+            reverse("core:contact"),
+            {
+                "name": "Shivam",
+                "email": "shivam64538@gmail.com.",
+                "message": "Please call me back.",
+            },
+        )
+        self.assertRedirects(response, reverse("core:contact"))
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("shivam64538@gmail.com", mail.outbox[0].body)
+
+    def test_contact_form_rejects_malformed_email(self):
+        response = self.client.post(
+            reverse("core:contact"),
+            {"name": "Casey", "email": "not-an-email", "message": "Hello!"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(mail.outbox), 0)
+
+    @override_settings(CONTACT_EMAIL="support@example.com.", EMAIL_BACKEND="django.core.mail.backends.smtp.EmailBackend")
+    def test_contact_form_survives_undeliverable_configured_address(self):
+        """An unusable configured recipient must degrade, never raise."""
+        response = self.client.post(
+            reverse("core:contact"),
+            {"name": "Casey", "email": "casey@example.com", "message": "Hello!"},
+        )
+        self.assertRedirects(response, reverse("core:contact"))
+
 
 class AccountFlowTests(TestCase):
     def setUp(self):

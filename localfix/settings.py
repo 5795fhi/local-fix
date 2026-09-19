@@ -62,6 +62,21 @@ def _env_list(name, default, strip_scheme=False):
     return items or list(default)
 
 
+def _clean_email(raw):
+    """Normalize an address configured through the environment.
+
+    Deploy panels routinely end up with a trailing dot ("user@example.com."),
+    which Django's mail sanitizer rejects with ValueError and which used to
+    take the whole page down. Quotes and stray whitespace are stripped too;
+    the display-name form ("LocalFix <no-reply@example.com>") is preserved.
+    """
+    value = (raw or "").strip().strip('"').strip("'").strip()
+    if "<" in value and value.endswith(">"):
+        name, addr = value.rsplit("<", 1)
+        return f"{name.strip()} <{addr[:-1].strip().rstrip('.').strip()}>"
+    return value.rstrip(".")
+
+
 # Hosts the platform always serves the app on. They are merged with whatever the
 # deploy panel provides, so a half-configured DJANGO_ALLOWED_HOSTS (blank,
 # scheme-prefixed, custom-domain-only) can never 400 the site on its own
@@ -221,11 +236,13 @@ EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
 EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "True").lower() in ("1", "true", "yes")
 EMAIL_USE_SSL = os.environ.get("EMAIL_USE_SSL", "False").lower() in ("1", "true", "yes")
 EMAIL_TIMEOUT = _env_int("EMAIL_TIMEOUT", 10)
-DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "LocalFix <no-reply@localfix.test>")
+DEFAULT_FROM_EMAIL = _clean_email(
+    os.environ.get("DEFAULT_FROM_EMAIL", "LocalFix <no-reply@localfix.test>")
+)
 # Absolute base URL used in email links (set to your deployed domain in prod).
 SITE_BASE_URL = os.environ.get("SITE_BASE_URL", "http://127.0.0.1:8000")
 # Where contact-form messages are delivered.
-CONTACT_EMAIL = os.environ.get("CONTACT_EMAIL", "support@localfix.test")
+CONTACT_EMAIL = _clean_email(os.environ.get("CONTACT_EMAIL", "support@localfix.test"))
 
 # Platform commission taken from each completed booking (percentage).
 PLATFORM_COMMISSION_PERCENT = 10
