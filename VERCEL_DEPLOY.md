@@ -1,7 +1,9 @@
 # LocalFix on Vercel
 
 LocalFix is a server-rendered Django application. Vercel detects `manage.py`
-and `localfix/wsgi.py`; `vercel.json` only defines the static collection build.
+and `localfix/wsgi.py`; `vercel.json` uses the Django framework preset, runs
+`collectstatic` at build time, and marks `/static/` assets immutable at the edge
+(WhiteNoise serves content-hashed filenames, so this is always safe).
 
 ## Required production services
 
@@ -55,6 +57,36 @@ LOCALFIX_AI_MODEL=openai/gpt-oss-20b
    ```
 
 Do not run `seed_demo` in production unless this is a disposable demo project.
+
+## Verifying which code is live
+
+Open `https://<your-app>.vercel.app/versionz/` after any deployment. It returns
+the git commit the running build came from:
+
+```json
+{"app": "localfix", "commit": "<short-sha>", "debug": false}
+```
+
+The `commit` must match the top of `git log` for the deployment you expect.
+If it shows an older commit, the deployment was built from stale code (see
+troubleshooting below).
+
+## Troubleshooting
+
+- **Build fails with `ValueError: invalid literal for int() ... DB_CONN_MAX_AGE`**
+  — this crash is fully fixed in the current code (`manage.py` normalizes an
+  empty value to `0`; `settings.py` parses numerics defensively). If you still
+  see it, the build is running old code: redeploy from the **latest** deployment
+  entry with "Use existing Build Cache" unchecked.
+- **Redeploy button rebuilds old code** — "Redeploy" on a *failed/old*
+  deployment entry rebuilds that entry's original commit. Instead, push an
+  (empty is fine) commit to trigger a fresh build from the tip, or redeploy the
+  top-most entry with the build cache disabled.
+- **`ImproperlyConfigured: NEON_DATABASE_URL ... must be set`** at build time —
+  set `NEON_DATABASE_URL` (Production scope) before deploying with
+  `DJANGO_DEBUG=False`. The build imports settings for `collectstatic`, so the
+  database variable must exist even though the build itself never touches the
+  database.
 
 ## Important Vercel constraints
 
