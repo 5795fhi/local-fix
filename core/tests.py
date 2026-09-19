@@ -350,6 +350,32 @@ class NegotiationTests(TestCase):
         self.assertIn("650", note.note)
 
 
+class HealthCheckTests(TestCase):
+    def test_healthz_is_live_without_database_queries(self):
+        with self.assertNumQueries(0):
+            response = self.client.get("/healthz/")
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data["status"], "ok")
+        self.assertEqual(data["app"], "localfix")
+        self.assertIn("commit", data)
+        self.assertIn("time", data)
+
+    def test_healthz_db_reports_reachable_and_migrated(self):
+        response = self.client.get("/healthz/db/")
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data["status"], "ok")
+        self.assertTrue(data["database"]["reachable"])
+        self.assertIn("latency_ms", data["database"])
+        self.assertEqual(data["database"]["pending_migrations"], 0)
+
+    def test_versionz_still_reports_commit(self):
+        response = self.client.get("/versionz/")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("commit", response.json())
+
+
 class ComplaintProfessionalSnapshotTests(TestCase):
     def setUp(self):
         self.customer = User.objects.create_user(

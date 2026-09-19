@@ -9,6 +9,7 @@ from django.db.models import Avg, Count, Q, Sum
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.http import JsonResponse
+from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from accounts.emails import send_provider_approved_email
@@ -189,12 +190,12 @@ def privacy(request):
     return render(request, "core/privacy.html")
 
 
-def version_info(request):
-    """Tiny deployment probe: reports which git revision is actually running.
+def _deploy_commit():
+    """Best-effort short commit SHA of the running build.
 
     Deploy platforms occasionally rebuild a stale commit (cache, old redeploy
-    button, monorepo root misconfig). Hitting /versionz/ after a deploy proves
-    which commit the live build came from.
+    button, monorepo root misconfig). Endpoints like /versionz/ and /healthz/
+    report this so a fresh deployment can be verified from the outside.
     """
     import subprocess
 
@@ -212,13 +213,87 @@ def version_info(request):
         or _git("rev-parse", "--short", "HEAD")
         or "unknown"
     )
+    return commit[:12]
+
+
+def version_info(request):
+    """Deployment probe: reports which git revision is actually running."""
     return JsonResponse(
         {
             "app": "localfix",
-            "commit": commit[:12],
+            "commit": _deploy_commit(),
             "debug": settings.DEBUG,
         }
     )
+
+
+# --- Health checks ------------------------------------------------------------
+
+
+def health(request):
+    """Liveness probe — proves the app itself is up; never touches the database.
+
+    Intentionally cheap and dependency-free so it stays green even while the
+    database is down; pair it with /healthz/db/ for readiness.
+    """
+    return JsonResponse(
+        {
+            "status": "ok",
+            "app": "localfix",
+            "commit": _deploy_commit(),
+            "time": timezone.now().isoformat(),
+        }
+    )
+
+
+def health_db(request):
+    """Readiness probe — checks database connectivity, latency, and migrations.
+
+    Returns 503 when the database cannot be reached, 200 with "status":
+    "degraded" when reachable but migrations are pending, and 200 "ok"
+    otherwise.
+    """
+    from time import perf_counter
+
+    from django.db import connection
+
+    result = {
+        "app": "localfix",
+        "commit": _deploy_commit(),
+        "status": "ok",
+        "database": {"reachable": False},
+        "time": timezone.now().isoformat(),
+    }
+
+    try:
+        started = perf_counter()
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+            cursor.fetchone()
+        result["database"] = {
+            "reachable": True,
+            "engine": connection.vendor,
+            "latency_ms": round((perf_counter() - started) * 1000, 1),
+        }
+    except Exception as exc:
+        result["status"] = "error"
+        result["database"]["error"] = exc.__class__.__name__
+        return JsonResponse(result, status=503)
+
+    # Only meaningful when the database answered; a failure here is reported
+    # but must not mark the whole service unhealthy.
+    try:
+        from django.db.migrations.executor import MigrationExecutor
+
+        executor = MigrationExecutor(connection)
+        plan = executor.migration_plan(executor.loader.graph.leaf_nodes())
+        result["database"]["pending_migrations"] = len(plan)
+        if plan:
+            result["status"] = "degraded"
+    except Exception:
+        result["database"]["pending_migrations"] = None
+
+    return JsonResponse(result)
 
 
 # --- Error handlers (referenced by handler404/handler500 in localfix.urls) ----
