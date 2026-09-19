@@ -26,13 +26,6 @@ SECRET_KEY = os.environ.get(
 
 DEBUG = os.environ.get("DJANGO_DEBUG", "False").lower() in ("1", "true", "yes")
 
-ALLOWED_HOSTS = [
-    h.strip()
-    for h in os.environ.get("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1,.vercel.app").split(",")
-    if h.strip()
-]
-
-
 def _env_int(name, default):
     """Read an integer env var; fall back to `default` when unset, empty or invalid.
 
@@ -45,13 +38,50 @@ def _env_int(name, default):
     except (TypeError, ValueError):
         return default
 
-CSRF_TRUSTED_ORIGINS = [
-    o.strip()
-    for o in os.environ.get(
-        "DJANGO_CSRF_TRUSTED_ORIGINS", "https://*.vercel.app"
-    ).split(",")
-    if o.strip()
-]
+
+def _env_list(name, default, strip_scheme=False):
+    """Read a comma-separated env var; fall back to `default` when unusable.
+
+    An empty or quote-wrapped value (pasted from docs with \"...\") would
+    otherwise parse to an empty list — for ALLOWED_HOSTS that makes Django
+    answer every request with a 400 DisallowedHost. Blank entries are dropped,
+    surrounding quotes and stray slashes are stripped, and when nothing usable
+    remains the safe default is used. strip_scheme tolerates values pasted
+    with a leading https:// (hosts must be bare domains; origins must not
+    have the scheme stripped, hence the flag).
+    """
+    raw = os.environ.get(name, "").strip().strip('"').strip("'")
+    items = []
+    for item in raw.split(","):
+        item = item.strip().strip('"').strip("'")
+        if strip_scheme and "://" in item:
+            item = item.split("://", 1)[1]
+        item = item.strip().strip("/").strip()
+        if item:
+            items.append(item)
+    return items or list(default)
+
+
+# Hosts the platform always serves the app on. They are merged with whatever the
+# deploy panel provides, so a half-configured DJANGO_ALLOWED_HOSTS (blank,
+# scheme-prefixed, custom-domain-only) can never 400 the site on its own
+# *.vercel.app URL.
+_PLATFORM_HOSTS = ["localhost", "127.0.0.1", ".vercel.app"]
+_PLATFORM_ORIGINS = ["https://*.vercel.app"]
+
+ALLOWED_HOSTS = list(
+    dict.fromkeys(
+        _env_list("DJANGO_ALLOWED_HOSTS", _PLATFORM_HOSTS, strip_scheme=True)
+        + _PLATFORM_HOSTS
+    )
+)
+
+CSRF_TRUSTED_ORIGINS = list(
+    dict.fromkeys(
+        _env_list("DJANGO_CSRF_TRUSTED_ORIGINS", _PLATFORM_ORIGINS)
+        + _PLATFORM_ORIGINS
+    )
+)
 
 INSTALLED_APPS = [
     "django.contrib.admin",

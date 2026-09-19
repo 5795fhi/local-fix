@@ -1,3 +1,7 @@
+import os
+from unittest import mock
+
+from django.conf import settings
 from django.core import mail
 from django.test import TestCase, override_settings
 from django.urls import reverse
@@ -348,6 +352,39 @@ class NegotiationTests(TestCase):
         )
         note = self.booking.history.latest("created_at")
         self.assertIn("650", note.note)
+
+
+class HostConfigurationTests(TestCase):
+    """ALLOWED_HOSTS must survive a blank or sloppy DJANGO_ALLOWED_HOSTS value.
+
+    A deployment URL lives on *.vercel.app; if the env var replaced rather than
+    extended the platform hosts, every request answered 400 DisallowedHost.
+    """
+
+    def test_platform_hosts_are_always_allowed(self):
+        self.assertIn(".vercel.app", settings.ALLOWED_HOSTS)
+        self.assertIn("localhost", settings.ALLOWED_HOSTS)
+        self.assertIn("https://*.vercel.app", settings.CSRF_TRUSTED_ORIGINS)
+
+    def test_env_list_falls_back_when_blank_or_quoted(self):
+        from localfix.settings import _env_list
+
+        for hostile in ("", "   ", '""', "'"):
+            with mock.patch.dict(os.environ, {"LOCALFIX_TEST_LIST": hostile}):
+                self.assertEqual(
+                    _env_list("LOCALFIX_TEST_LIST", ["fallback"]), ["fallback"]
+                )
+
+    def test_env_list_cleans_quotes_scheme_and_slashes(self):
+        from localfix.settings import _env_list
+
+        with mock.patch.dict(
+            os.environ, {"LOCALFIX_TEST_LIST": '"https://myapp.vercel.app/"'}
+        ):
+            self.assertEqual(
+                _env_list("LOCALFIX_TEST_LIST", ["fallback"], strip_scheme=True),
+                ["myapp.vercel.app"],
+            )
 
 
 class HealthCheckTests(TestCase):
