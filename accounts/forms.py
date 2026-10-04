@@ -1,12 +1,52 @@
+import io
+import os
+
 from django import forms
 from django.contrib.auth import get_user_model, password_validation
 from django.contrib.auth.forms import AuthenticationForm
 from django.core.exceptions import ValidationError
+from django.core.files.base import ContentFile
 
 from services.models import ServiceCategory
 from .models import ProviderProfile
 
 User = get_user_model()
+
+AVATAR_MAX_BYTES = 2 * 1024 * 1024
+AVATAR_MAX_SIDE = 512
+
+
+def _square_avatar(uploaded):
+    """Centre-crop an upload to a square and shrink it to a compact JPEG.
+
+    Photos are stored in the database (see ``accounts.storage``), so keeping
+    them small matters: a 512px JPEG is a few tens of kilobytes.
+    """
+    from PIL import Image, ImageOps
+
+    try:
+        image = Image.open(uploaded)
+        image = ImageOps.exif_transpose(image)
+        if image.mode in ("RGBA", "LA", "P"):
+            image = image.convert("RGBA")
+            canvas = Image.new("RGB", image.size, "white")
+            canvas.paste(image, mask=image.split()[-1])
+            image = canvas
+        else:
+            image = image.convert("RGB")
+        side = min(image.size)
+        left = (image.width - side) // 2
+        top = (image.height - side) // 2
+        image = image.crop((left, top, left + side, top + side))
+        if side > AVATAR_MAX_SIDE:
+            image = image.resize((AVATAR_MAX_SIDE, AVATAR_MAX_SIDE), Image.LANCZOS)
+        buffer = io.BytesIO()
+        image.save(buffer, format="JPEG", quality=85, optimize=True)
+    except Exception:
+        raise ValidationError("That image could not be read. Please try another file.")
+
+    stem = os.path.splitext(os.path.basename(uploaded.name or "avatar"))[0]
+    return ContentFile(buffer.getvalue(), name=f"{stem or 'avatar'}.jpg")
 
 _TEXT = {"class": "input"}
 _PASSWORD = {
@@ -226,6 +266,9 @@ class ProfileForm(forms.ModelForm):
 
     def clean_avatar(self):
         avatar = self.cleaned_data.get("avatar")
-        if avatar and getattr(avatar, "size", 0) > 2 * 1024 * 1024:
+        # False when the "clear" checkbox on the current photo was ticked.
+        if not avatar or not hasattr(avatar, "read"):
+            return avatar
+        if avatar.size > AVATAR_MAX_BYTES:
             raise forms.ValidationError("Please choose an image smaller than 2 MB.")
-        return avatar
+        return _square_avatar(avatar)

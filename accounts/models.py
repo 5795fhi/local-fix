@@ -74,6 +74,28 @@ class User(AbstractUser):
         self.save(update_fields=["welcome_email_sent_at"])
 
 
+class StoredFile(models.Model):
+    """An uploaded file kept in the database (see ``accounts.storage``).
+
+    Serverless hosts such as Vercel have a read-only, ephemeral filesystem, so
+    profile photos cannot live on disk there. Profile photos are small, so the
+    bytes are stored in the row and streamed back by ``core.views.media_file``.
+    """
+
+    name = models.CharField(max_length=255, unique=True)
+    content = models.BinaryField()
+    content_type = models.CharField(max_length=100, blank=True)
+    size = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.name
+
+    def content_bytes(self):
+        """Return the payload as bytes (BinaryField yields a memoryview)."""
+        return bytes(self.content)
+
+
 class ProviderProfile(models.Model):
     """Extended profile and availability data for service providers."""
 

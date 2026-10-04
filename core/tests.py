@@ -1,4 +1,5 @@
 import base64
+import io
 import os
 import shutil
 import tempfile
@@ -11,7 +12,7 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
-from accounts.models import OTP, ProviderProfile, User
+from accounts.models import OTP, ProviderProfile, StoredFile, User
 from bookings.models import Booking
 from complaints.models import Complaint
 from services.models import ServiceCategory
@@ -22,6 +23,15 @@ import datetime
 _PNG_1PX = base64.b64decode(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
 )
+
+
+def _large_png(width=1400, height=900):
+    """A non-square PNG, to prove uploads get cropped and shrunk."""
+    from PIL import Image
+
+    buffer = io.BytesIO()
+    Image.new("RGB", (width, height), "#13a4ec").save(buffer, format="PNG")
+    return buffer.getvalue()
 
 
 def _future(days=3, hour=15):
@@ -605,6 +615,95 @@ class CustomerProfileAddressTests(TestCase):
 
             html = self.client.get(reverse("accounts:profile")).content.decode()
             self.assertIn(self.customer.avatar.url, html)
+
+    def test_avatar_upload_needs_no_writable_filesystem(self):
+        """Serverless hosts (Vercel) have a read-only disk: photos go to the DB."""
+        media_root = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, media_root, True)
+        self.client.force_login(self.customer)
+        with override_settings(MEDIA_ROOT=media_root):
+            response = self.client.post(
+                reverse("accounts:profile"),
+                self._profile_post_data(
+                    avatar=SimpleUploadedFile(
+                        "face.png", _PNG_1PX, content_type="image/png"
+                    )
+                ),
+            )
+            self.assertRedirects(response, reverse("accounts:profile"))
+            self.customer.refresh_from_db()
+            self.assertTrue(self.customer.avatar)
+            # The photo is in the database — nothing was written to disk.
+            self.assertEqual(os.listdir(media_root), [])
+            record = StoredFile.objects.get(name=self.customer.avatar.name)
+
+            served = self.client.get(self.customer.avatar.url)
+            self.assertEqual(served.status_code, 200)
+            self.assertEqual(served["Content-Type"], "image/jpeg")
+            self.assertEqual(b"".join(served.streaming_content), record.content_bytes())
+
+        self.assertEqual(self.client.get("/media/avatars/missing.png").status_code, 404)
+
+    def test_replacing_or_clearing_the_photo_removes_the_old_file(self):
+        media_root = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, media_root, True)
+        self.client.force_login(self.customer)
+        with override_settings(MEDIA_ROOT=media_root):
+            self.client.post(
+                reverse("accounts:profile"),
+                self._profile_post_data(
+                    avatar=SimpleUploadedFile(
+                        "face.png", _PNG_1PX, content_type="image/png"
+                    )
+                ),
+            )
+            self.customer.refresh_from_db()
+            first = self.customer.avatar.name
+            self.assertTrue(StoredFile.objects.filter(name=first).exists())
+
+            # A new photo replaces the old one instead of piling up rows.
+            self.client.post(
+                reverse("accounts:profile"),
+                self._profile_post_data(
+                    avatar=SimpleUploadedFile(
+                        "second.png", _PNG_1PX, content_type="image/png"
+                    )
+                ),
+            )
+            self.customer.refresh_from_db()
+            second = self.customer.avatar.name
+            self.assertNotEqual(first, second)
+            self.assertFalse(StoredFile.objects.filter(name=first).exists())
+            self.assertTrue(StoredFile.objects.filter(name=second).exists())
+
+            # The "Clear" checkbox on the current photo.
+            self.client.post(
+                reverse("accounts:profile"),
+                self._profile_post_data(**{"avatar-clear": "on"}),
+            )
+        self.customer.refresh_from_db()
+        self.assertFalse(self.customer.avatar)
+        self.assertFalse(StoredFile.objects.filter(name=second).exists())
+
+    def test_uploaded_photo_is_cropped_square_and_shrunk(self):
+        from PIL import Image
+
+        media_root = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, media_root, True)
+        self.client.force_login(self.customer)
+        with override_settings(MEDIA_ROOT=media_root):
+            self.client.post(
+                reverse("accounts:profile"),
+                self._profile_post_data(
+                    avatar=SimpleUploadedFile(
+                        "wide.png", _large_png(), content_type="image/png"
+                    )
+                ),
+            )
+        self.customer.refresh_from_db()
+        self.assertTrue(self.customer.avatar.name.endswith(".jpg"))
+        with Image.open(self.customer.avatar) as stored:
+            self.assertEqual(stored.size, (512, 512))
 
     def test_booking_form_prefills_the_profile_address(self):
         self.customer.address = "B-702, Andheri West"

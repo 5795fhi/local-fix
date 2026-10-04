@@ -1,4 +1,8 @@
+import logging
+import mimetypes
 import os
+from io import BytesIO
+from pathlib import Path
 
 from django.conf import settings
 from django.contrib import messages
@@ -7,12 +11,11 @@ from django.contrib.auth.decorators import login_required
 from django.core.mail import send_mail
 from django.db.models import Avg, Count, Q, Sum
 from django.shortcuts import get_object_or_404, redirect, render
-import logging
 
 from django.urls import reverse
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
-from django.http import JsonResponse
+from django.http import FileResponse, Http404, JsonResponse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
@@ -141,6 +144,41 @@ def approve_provider(request, pk):
         )
         send_provider_approved_email(profile.user)
     return redirect("core:dashboard")
+
+
+# --- Uploaded media -----------------------------------------------------------
+
+
+def media_file(request, name):
+    """Serve an uploaded file.
+
+    Avatars live in the database (accounts.storage.DatabaseStorage) because
+    hosts such as Vercel have a read-only, ephemeral filesystem. Files written
+    to MEDIA_ROOT by older builds are still served while developing.
+    """
+    from accounts.models import StoredFile
+
+    record = StoredFile.objects.filter(name=name).first()
+    if record is not None:
+        response = FileResponse(
+            BytesIO(record.content_bytes()),
+            content_type=record.content_type or "application/octet-stream",
+        )
+    elif settings.DEBUG:
+        base = Path(settings.MEDIA_ROOT).resolve()
+        candidate = (base / name).resolve()
+        if base not in candidate.parents or not candidate.is_file():
+            raise Http404("No such file.")
+        response = FileResponse(
+            open(candidate, "rb"),
+            content_type=mimetypes.guess_type(candidate.name)[0]
+            or "application/octet-stream",
+        )
+    else:
+        raise Http404("No such file.")
+
+    response["Cache-Control"] = "public, max-age=86400"
+    return response
 
 
 # --- Static pages -------------------------------------------------------------

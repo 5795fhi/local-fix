@@ -1,5 +1,3 @@
-from django.conf import settings
-from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 
@@ -21,7 +19,8 @@ urlpatterns = [
 handler404 = "core.views.page_not_found"
 handler500 = "core.views.server_error"
 
-# Uploaded avatars are served by Django while developing. In production the
-# host must serve MEDIA_URL itself (or use a durable storage backend).
-if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+# Uploaded avatars are stored in the database (accounts.storage) and streamed
+# from here, so they survive hosts with a read-only filesystem like Vercel.
+urlpatterns += [
+    path("media/<path:name>", core_views.media_file, name="media_file"),
+]

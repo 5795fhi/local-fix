@@ -221,14 +221,15 @@ STATIC_URL = "/static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
-# User-uploaded media (profile avatars). The local filesystem works for
-# development and long-lived servers; serverless hosts like Vercel have an
-# ephemeral filesystem, so production uploads need durable object storage
-# (point MEDIA_ROOT at a mounted volume or swap the default storage backend).
+# User-uploaded media (profile avatars).
+# Vercel's filesystem is read-only and ephemeral, so uploads are stored in the
+# database (accounts.storage.DatabaseStorage) and streamed by
+# core.views.media_file; MEDIA_ROOT only serves files left on disk by older
+# builds while developing.
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 STORAGES = {
-    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "default": {"BACKEND": "accounts.storage.DatabaseStorage"},
     "staticfiles": {"BACKEND": "whitenoise.storage.CompressedStaticFilesStorage"},
 }
 

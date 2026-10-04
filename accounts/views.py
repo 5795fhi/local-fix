@@ -1,7 +1,11 @@
+import logging
+
 from django.contrib import messages
 from django.contrib.auth import get_user_model, login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import LoginView
+from django.core.files.storage import default_storage
+from django.db import DatabaseError
 from django.shortcuts import redirect, render
 from django.urls import reverse
 
@@ -25,6 +29,8 @@ from .models import OTP
 from .services import send_otp
 
 User = get_user_model()
+
+logger = logging.getLogger("localfix.accounts")
 
 
 def register(request):
@@ -125,11 +131,30 @@ def logout_view(request):
 @login_required
 def profile(request):
     if request.method == "POST" and "profile" in request.POST:
+        # Read before validating: ModelForm validation copies the upload onto
+        # the instance, so the previous file name is gone once is_valid() ran.
+        previous_avatar = request.user.avatar.name if request.user.avatar else ""
         form = ProfileForm(request.POST, request.FILES, instance=request.user)
         if form.is_valid():
-            form.save()
-            messages.success(request, "Profile updated.")
-            return redirect("accounts:profile")
+            try:
+                form.save()
+            except (OSError, DatabaseError):
+                # A storage outage must not turn a profile edit into a 500:
+                # keep what the user typed and say the photo was not stored.
+                logger.exception("Could not store the uploaded profile photo")
+                form.add_error(
+                    "avatar",
+                    "We couldn't store that photo. Please try another image.",
+                )
+            else:
+                # Django leaves replaced or cleared files behind; with photos
+                # kept in the database the old row must go, both to keep the
+                # table small and because a removed photo must stop being served.
+                current_avatar = request.user.avatar.name if request.user.avatar else ""
+                if previous_avatar and previous_avatar != current_avatar:
+                    default_storage.delete(previous_avatar)
+                messages.success(request, "Profile updated.")
+                return redirect("accounts:profile")
     else:
         form = ProfileForm(instance=request.user)
 
