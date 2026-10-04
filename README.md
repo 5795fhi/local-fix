@@ -48,7 +48,7 @@ All demo users use the `@example.com` domain. More customers: `rohan.mehta@`,
 - **48 Indian service professionals** spread across all categories, located on
   Mumbai's Western Railway line from **Churchgate to Virar** (Andheri West,
   Bandra West, Borivali West, Vasai, Nalasopara, Virar, …) — 44 approved + 4
-  pending approval, each with a locally generated avatar image under `media/avatars/`
+  pending approval, each with a built-in letter avatar
 - 4 Indian customers with realistic Mumbai society addresses
 - 7 bookings covering **every lifecycle state** (requested, accepted, in progress,
   completed, paid, rejected, cancelled) with full status history

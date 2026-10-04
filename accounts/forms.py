@@ -200,11 +200,32 @@ class ProviderProfileForm(forms.ModelForm):
 
 
 class ProfileForm(forms.ModelForm):
+    """Personal details a customer can view and update from their profile."""
+
     class Meta:
         model = User
-        fields = ["first_name", "last_name", "phone"]
+        fields = ["first_name", "last_name", "phone", "address", "avatar"]
+        labels = {
+            "phone": "Mobile number",
+            "address": "Service address",
+            "avatar": "Profile photo",
+        }
         widgets = {
             "first_name": forms.TextInput(attrs=_TEXT),
             "last_name": forms.TextInput(attrs=_TEXT),
-            "phone": forms.TextInput(attrs=_TEXT),
+            "phone": forms.TextInput(
+                attrs={**_TEXT, "inputmode": "tel", "autocomplete": "tel"}
+            ),
+            "address": forms.Textarea(
+                attrs={**_TEXT, "rows": 3, "placeholder": "House / flat, street, area, city"}
+            ),
+            "avatar": forms.ClearableFileInput(
+                attrs={"class": "input", "accept": "image/*"}
+            ),
         }
+
+    def clean_avatar(self):
+        avatar = self.cleaned_data.get("avatar")
+        if avatar and getattr(avatar, "size", 0) > 2 * 1024 * 1024:
+            raise forms.ValidationError("Please choose an image smaller than 2 MB.")
+        return avatar

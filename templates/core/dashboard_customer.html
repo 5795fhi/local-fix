@@ -79,6 +79,26 @@
 
       <aside>
         <div class="panel">
+          <div class="panel-head">
+            <h3>Your profile</h3>
+            <a href="{% url 'accounts:profile' %}" class="btn btn-ghost btn-sm">Edit</a>
+          </div>
+          <div class="panel-body">
+            <div class="flex center gap-sm">
+              {% include "_avatar.html" with a_user=user %}
+              <div>
+                <b>{{ user.display_name }}</b>
+                <p class="text-muted mb-0" style="font-size:.86rem">{{ user.email }}</p>
+              </div>
+            </div>
+            <hr class="divider">
+            <div class="kv"><span class="k">Mobile</span><b>{{ user.phone|default:"Not set" }}</b></div>
+            <div class="kv"><span class="k">Address</span><b>{{ user.address|default:"Not set" }}</b></div>
+            <p class="helptext mt-1 mb-0">Your address is pre-filled on every new booking and shared with the professional you hire.</p>
+            <a href="{% url 'accounts:profile' %}" class="btn btn-primary btn-block mt-2">Edit profile</a>
+          </div>
+        </div>
+        <div class="panel">
           <div class="panel-head"><h3>Browse services</h3></div>
           <div class="panel-body">
             <div class="chips">

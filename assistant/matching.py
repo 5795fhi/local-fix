@@ -156,7 +156,7 @@ def serialize_provider(profile, category=None):
     return {
         "id": profile.pk,
         "name": profile.user.display_name,
-        "avatar": "",
+        "avatar": profile.user.avatar.url if profile.user.avatar else "",
         "avatar_variant": profile.user.avatar_variant,
         "headline": profile.headline or "Local professional",
         "rating": f"{profile.rating_avg:.1f}",

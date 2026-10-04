@@ -129,7 +129,10 @@ troubleshooting below).
 ## Important Vercel constraints
 
 - Do not rely on SQLite for production data.
-- Profiles use built-in letter avatars, so no upload storage is required.
+- Profile photos are uploads: they are written to `MEDIA_ROOT`, which is
+  ephemeral on Vercel Functions, so photos only persist locally unless you
+  point the default storage at durable object storage (S3, Cloudinary, …).
+  Everything else (letter avatars, personal details) works without a media store.
 - Long-running background jobs and WebSockets need a separate worker/service;
   this application currently uses request/response flows suitable for Vercel Functions.
 - Preview deployments need their own database policy if users will create data there.

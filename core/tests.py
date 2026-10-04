@@ -1,8 +1,12 @@
+import base64
 import os
+import shutil
+import tempfile
 from unittest import mock
 
 from django.conf import settings
 from django.core import mail
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
@@ -10,8 +14,14 @@ from django.utils import timezone
 from accounts.models import OTP, ProviderProfile, User
 from bookings.models import Booking
 from complaints.models import Complaint
+from services.models import ServiceCategory
 
 import datetime
+
+# Smallest valid PNG (1×1, transparent) used for avatar-upload tests.
+_PNG_1PX = base64.b64decode(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+)
 
 
 def _future(days=3, hour=15):
@@ -497,3 +507,138 @@ class ComplaintProfessionalSnapshotTests(TestCase):
         )
         complaint = Complaint.objects.get(subject="App issue")
         self.assertEqual(complaint.reported_professional_name, "")
+
+
+class CustomerProfileAddressTests(TestCase):
+    """Profile photo, mobile/address editing, and address flow into bookings."""
+
+    def setUp(self):
+        self.customer = User.objects.create_user(
+            email="meera@example.com",
+            password="StrongPass123!",
+            role=User.Role.CUSTOMER,
+            first_name="Meera",
+            last_name="Iyer",
+            phone="+919800000001",
+            address="A-101, Shivaji Nagar, Pune",
+        )
+        self.customer.is_verified = True
+        self.customer.save(update_fields=["is_verified"])
+
+        self.provider = User.objects.create_user(
+            email="plumber@example.com",
+            password="StrongPass123!",
+            role=User.Role.PROVIDER,
+            phone="+919800000009",
+        )
+        self.provider.is_verified = True
+        self.provider.save(update_fields=["is_verified"])
+        profile = self.provider.provider_profile
+        profile.is_approved = True
+        profile.save(update_fields=["is_approved"])
+        self.category = ServiceCategory.objects.create(
+            name="Test Plumbing", slug="test-plumbing", base_price=300
+        )
+        profile.categories.add(self.category)
+
+    def _profile_post_data(self, **overrides):
+        data = {
+            "profile": "1",
+            "first_name": "Meera",
+            "last_name": "Iyer",
+            "phone": "+919800000001",
+            "address": "A-101, Shivaji Nagar, Pune",
+        }
+        data.update(overrides)
+        return data
+
+    def test_profile_page_shows_mobile_email_address_and_photo_upload(self):
+        self.client.force_login(self.customer)
+        response = self.client.get(reverse("accounts:profile"))
+        self.assertEqual(response.status_code, 200)
+        html = response.content.decode()
+        self.assertIn("multipart/form-data", html)
+        self.assertIn('type="file"', html)
+        self.assertIn("Mobile number", html)
+        self.assertIn("meera@example.com", html)
+        self.assertIn("Service address", html)
+
+    def test_customer_dashboard_surfaces_the_profile_page(self):
+        self.client.force_login(self.customer)
+        html = self.client.get(reverse("core:dashboard")).content.decode()
+        self.assertIn("Your profile", html)
+        self.assertIn(reverse("accounts:profile"), html)
+        self.assertIn("A-101, Shivaji Nagar, Pune", html)
+        self.assertIn("+919800000001", html)
+
+    def test_profile_update_saves_mobile_number_and_address(self):
+        self.client.force_login(self.customer)
+        response = self.client.post(
+            reverse("accounts:profile"), self._profile_post_data()
+        )
+        self.assertRedirects(response, reverse("accounts:profile"))
+        self.customer.refresh_from_db()
+        self.assertEqual(self.customer.phone, "+919800000001")
+        self.assertEqual(self.customer.address, "A-101, Shivaji Nagar, Pune")
+
+        # Saved address is shown back on the next visit (get + update).
+        html = self.client.get(reverse("accounts:profile")).content.decode()
+        self.assertIn("A-101, Shivaji Nagar, Pune", html)
+
+    def test_profile_photo_upload_is_stored_and_rendered(self):
+        media_root = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, media_root, True)
+        self.client.force_login(self.customer)
+        with override_settings(MEDIA_ROOT=media_root):
+            response = self.client.post(
+                reverse("accounts:profile"),
+                self._profile_post_data(
+                    avatar=SimpleUploadedFile(
+                        "face.png", _PNG_1PX, content_type="image/png"
+                    )
+                ),
+            )
+            self.assertRedirects(response, reverse("accounts:profile"))
+            self.customer.refresh_from_db()
+            self.assertTrue(self.customer.avatar)
+            self.assertTrue(self.customer.avatar.name.startswith("avatars/"))
+
+            html = self.client.get(reverse("accounts:profile")).content.decode()
+            self.assertIn(self.customer.avatar.url, html)
+
+    def test_booking_form_prefills_the_profile_address(self):
+        self.customer.address = "B-702, Andheri West"
+        self.customer.save(update_fields=["address"])
+        self.client.force_login(self.customer)
+        response = self.client.get(
+            reverse("bookings:create", args=[self.provider.provider_profile.pk])
+        )
+        self.assertEqual(response.status_code, 200)
+        html = response.content.decode()
+        self.assertIn('value="B-702, Andheri West"', html)
+
+    def test_booking_sends_the_address_to_the_provider_incoming_requests(self):
+        self.client.force_login(self.customer)
+        response = self.client.post(
+            reverse("bookings:create", args=[self.provider.provider_profile.pk]),
+            {
+                "category": self.category.pk,
+                "description": "Leaking kitchen tap",
+                "address": "C-5, Kothrud, Pune",
+                "scheduled_for": _future().strftime("%Y-%m-%dT%H:%M"),
+                "save_address": "on",
+            },
+        )
+        booking = Booking.objects.get(customer=self.customer)
+        self.assertRedirects(response, reverse("bookings:detail", args=[booking.pk]))
+        self.assertEqual(booking.address, "C-5, Kothrud, Pune")
+        # The checkbox keeps the profile in sync for the next booking.
+        self.customer.refresh_from_db()
+        self.assertEqual(self.customer.address, "C-5, Kothrud, Pune")
+
+        # The professional sees the address (and contact number) on their board.
+        self.client.force_login(self.provider)
+        html = self.client.get(reverse("core:dashboard")).content.decode()
+        self.assertIn("Incoming requests", html)
+        self.assertIn("C-5, Kothrud, Pune", html)
+        self.assertIn("+919800000001", html)

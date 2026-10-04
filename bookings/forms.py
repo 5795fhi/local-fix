@@ -13,10 +13,16 @@ class BookingForm(forms.ModelForm):
         ),
         input_formats=["%Y-%m-%dT%H:%M"],
     )
+    save_address = forms.BooleanField(
+        required=False,
+        initial=True,
+        label="Save this address to my profile for next time",
+    )
 
     class Meta:
         model = Booking
         fields = ["category", "description", "address", "scheduled_for"]
+        labels = {"address": "Service address"}
         widgets = {
             "description": forms.Textarea(attrs={**_TEXT, "rows": 4}),
             "address": forms.TextInput(attrs=_TEXT),

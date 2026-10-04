@@ -23,18 +23,58 @@
     </div>
 
     <div class="panel">
-      <div class="panel-head"><h3>Personal details</h3></div>
+      <div class="panel-head">
+        <h3>Personal details</h3>
+        <span class="chip">mobile · email · address</span>
+      </div>
       <div class="panel-body">
-        <form method="post" novalidate>
+        <form method="post" enctype="multipart/form-data" novalidate>
           {% csrf_token %}
           <input type="hidden" name="profile" value="1">
-          {% for f in form %}
+
           <div class="field">
-            <label for="{{ f.id_for_label }}">{{ f.label }}</label>
-            {{ f }}{{ f.errors }}
-            {% if f.help_text %}<div class="helptext">{{ f.help_text }}</div>{% endif %}
+            <label for="{{ form.avatar.id_for_label }}">Profile photo</label>
+            <div class="flex center gap-sm wrap">
+              {% include "_avatar.html" with a_user=user a_class="avatar-lg" %}
+              <div class="grow">
+                {{ form.avatar }}{{ form.avatar.errors }}
+                <div class="helptext">A square JPG or PNG under 2 MB looks best. Leave empty to keep your current photo.</div>
+              </div>
+            </div>
           </div>
-          {% endfor %}
+
+          <div class="flex gap-sm wrap">
+            <div class="field grow">
+              <label for="{{ form.first_name.id_for_label }}">{{ form.first_name.label }}</label>
+              {{ form.first_name }}{{ form.first_name.errors }}
+            </div>
+            <div class="field grow">
+              <label for="{{ form.last_name.id_for_label }}">{{ form.last_name.label }}</label>
+              {{ form.last_name }}{{ form.last_name.errors }}
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="{{ form.phone.id_for_label }}">Mobile number</label>
+            {{ form.phone }}{{ form.phone.errors }}
+            <div class="helptext">Shared with a professional only after you book them.</div>
+          </div>
+
+          <div class="field">
+            <label for="profile-email">Email</label>
+            <input class="input" id="profile-email" type="email" value="{{ user.email }}" readonly>
+            <div class="helptext">
+              Your sign-in email cannot be edited here —
+              <a href="#email-section">change it securely</a> in the Email address panel below.
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="{{ form.address.id_for_label }}">Service address</label>
+            {{ form.address }}{{ form.address.errors }}
+            {% if form.address.help_text %}<div class="helptext">{{ form.address.help_text }}</div>{% endif %}
+          </div>
+
           <button class="btn btn-primary" type="submit">Save changes</button>
         </form>
       </div>
@@ -84,7 +124,7 @@
       </div>
     </div>
 
-    <div class="panel">
+    <div class="panel" id="email-section">
       <div class="panel-head">
         <h3>📧 Email address</h3>
         <span class="chip">{{ user.email }}</span>

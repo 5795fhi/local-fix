@@ -59,7 +59,8 @@
           <div class="list-row">
             <div class="lead">
               <b>{{ b.category }} · {{ b.customer.display_name }}</b>
-              <span>🗓 {{ b.scheduled_for|date:"D, M j · g:i A" }} &nbsp;·&nbsp; 📍 {{ b.address|truncatechars:40 }}</span>
+              <span>🗓 {{ b.scheduled_for|date:"D, M j · g:i A" }} &nbsp;·&nbsp; 📍 {{ b.address }}</span>
+              {% if b.customer.phone %}<span class="text-muted" style="font-size:.84rem">📞 {{ b.customer.phone }}</span>{% endif %}
               <span class="text-muted" style="font-size:.84rem">{{ b.description|truncatewords:12 }}</span>
             </div>
             <a href="{% url 'bookings:detail' b.pk %}" class="btn btn-primary btn-sm">Respond</a>

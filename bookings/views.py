@@ -42,6 +42,9 @@ def create_booking(request, provider_id):
             booking.provider = provider_profile.user
             booking.quoted_price = booking.category.base_price if booking.category else 0
             booking.save()
+            if form.cleaned_data.get("save_address") and booking.address:
+                request.user.address = booking.address
+                request.user.save(update_fields=["address"])
             Notification.notify(
                 provider_profile.user,
                 "New booking request",
@@ -52,7 +55,7 @@ def create_booking(request, provider_id):
             messages.success(request, "Booking request sent to the provider.")
             return redirect("bookings:detail", pk=booking.pk)
     else:
-        form = BookingForm()
+        form = BookingForm(initial={"address": request.user.address})
         form.fields["category"].queryset = provider_profile.categories.all()
 
     return render(

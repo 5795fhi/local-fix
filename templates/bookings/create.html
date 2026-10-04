@@ -30,6 +30,16 @@
           <div class="field">
             <label for="{{ form.address.id_for_label }}">Service address</label>
             {{ form.address }}{{ form.address.errors }}
+            <div class="helptext">
+              {% if user.address %}Loaded from your profile — edit it just for this booking, or update it in <a href="{% url 'accounts:profile' %}">My profile</a>.{% else %}Where should the professional arrive? Save it to your profile for faster booking next time.{% endif %}
+            </div>
+          </div>
+
+          <div class="field">
+            <label class="check-row" style="padding-left:0">
+              {{ form.save_address }}
+              {{ form.save_address.label }}
+            </label>
           </div>
 
           <div class="field">

@@ -1,5 +1,8 @@
 {% if a_user %}
 <div class="avatar avatar-default-{{ a_user.avatar_variant }}{% if a_class %} {{ a_class }}{% endif %}">
+  {% if a_user.avatar %}
+  <img src="{{ a_user.avatar.url }}" alt="" loading="lazy" onerror="this.classList.add('hide')">
+  {% endif %}
   <span class="avatar-fallback" aria-hidden="true">{{ a_user.display_name|first|upper }}</span>
 </div>
 {% endif %}

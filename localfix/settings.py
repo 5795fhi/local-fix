@@ -7,6 +7,7 @@ from request to payment, reviews, and complaints.
 """
 from pathlib import Path
 import os
+import sys
 
 import dj_database_url
 from django.core.exceptions import ImproperlyConfigured
@@ -163,13 +164,21 @@ _database_url = (
 # An empty or malformed deployment variable must not crash settings import
 # during collectstatic; use zero unless a valid value is supplied.
 _db_conn_max_age = _env_int("DB_CONN_MAX_AGE", 0)
-if _database_url:
+
+# True only when the test runner invoked us ("manage.py test ...").
+_in_tests = len(sys.argv) > 1 and sys.argv[1] == "test"
+
+# Database selection order (matches README): 1) test runs always get local
+# SQLite; 2) local development (DJANGO_DEBUG=True) always gets local SQLite —
+# a stale NEON_DATABASE_URL in .env must never hijack dev traffic to the
+# production database; 3) otherwise the Neon/Postgres URL is used; 4) in
+# production with no URL at all, refuse to start rather than silently lose data.
+if _in_tests and not os.environ.get("DJANGO_TEST_DATABASE_URL"):
     DATABASES = {
-        "default": dj_database_url.parse(
-            _database_url,
-            conn_max_age=_db_conn_max_age,
-            ssl_require=True,
-        )
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.test.sqlite3",
+        }
     }
 elif DEBUG:
     DATABASES = {
@@ -177,6 +186,14 @@ elif DEBUG:
             "ENGINE": "django.db.backends.sqlite3",
             "NAME": BASE_DIR / "db.sqlite3",
         }
+    }
+elif _database_url:
+    DATABASES = {
+        "default": dj_database_url.parse(
+            _database_url,
+            conn_max_age=_db_conn_max_age,
+            ssl_require=True,
+        )
     }
 else:
     raise ImproperlyConfigured(
@@ -203,6 +220,13 @@ USE_TZ = True
 STATIC_URL = "/static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
+
+# User-uploaded media (profile avatars). The local filesystem works for
+# development and long-lived servers; serverless hosts like Vercel have an
+# ephemeral filesystem, so production uploads need durable object storage
+# (point MEDIA_ROOT at a mounted volume or swap the default storage backend).
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
 STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
     "staticfiles": {"BACKEND": "whitenoise.storage.CompressedStaticFilesStorage"},
@@ -261,3 +285,13 @@ if not DEBUG:
     SECURE_CONTENT_TYPE_NOSNIFF = True
     X_FRAME_OPTIONS = "SAMEORIGIN"
     SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
+
+# Test runs must stay hermetic: they talk to a local SQLite database over
+# plain HTTP and must never deliver real mail through the configured SMTP
+# provider (tests that assert on outgoing email override this themselves).
+if _in_tests:
+    SECURE_SSL_REDIRECT = False
+    SECURE_HSTS_SECONDS = 0
+    EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
+    SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SECURE = False

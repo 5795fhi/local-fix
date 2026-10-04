@@ -19,7 +19,14 @@ class User(AbstractUser):
 
     username = None
     email = models.EmailField("email address", unique=True)
-    phone = models.CharField(max_length=20, blank=True)
+    phone = models.CharField("mobile number", max_length=20, blank=True)
+    address = models.CharField(
+        "service address",
+        max_length=255,
+        blank=True,
+        help_text="Saved address, pre-filled on new booking requests.",
+    )
+    avatar = models.ImageField(upload_to="avatars/", blank=True, null=True)
     role = models.CharField(max_length=20, choices=Role.choices, default=Role.CUSTOMER)
     is_verified = models.BooleanField(
         default=False, help_text="Whether the account has passed OTP verification."

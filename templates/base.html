@@ -39,6 +39,7 @@
         {% if user.is_authenticated %}
           <a href="{% url 'bookings:list' %}">Bookings</a>
           <a href="{% url 'assistant:chat' %}">Assistant</a>
+          <a href="{% url 'accounts:profile' %}">My profile</a>
           {% if user.is_platform_admin %}
             <a href="{% url 'complaints:manage' %}">Complaints</a>
           {% endif %}
