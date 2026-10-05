@@ -67,12 +67,14 @@ def send_templated_email(name, to_email, context, subject=None):
         except (smtplib.SMTPServerDisconnected, smtplib.SMTPConnectError,
                 TimeoutError, OSError) as exc:
             # Some hosted SMTP relays drop an idle/serverless connection while
-            # AUTH is in progress.  Recreate the connection once; Django's
-            # EmailMessage opens a fresh backend connection for this retry.
+            # AUTH is in progress. EmailMessage caches its backend connection,
+            # so clear it before retrying or Django will call sendmail() on the
+            # already-closed connection instead of reconnecting.
             logger.warning(
                 "SMTP connection dropped while sending %s to %s; retrying once: %s",
                 name, to_email, exc,
             )
+            message.connection = None
             sent = message.send()
     except smtplib.SMTPAuthenticationError:
         logger.exception(
