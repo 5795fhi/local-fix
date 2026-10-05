@@ -257,13 +257,27 @@ EMAIL_BACKEND = os.environ.get(
 EMAIL_HOST = os.environ.get("EMAIL_HOST", "")
 EMAIL_PORT = _env_int("EMAIL_PORT", 587)
 EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
-EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
+# Deployment dashboards often add surrounding whitespace when a secret is
+# pasted.  It is never meaningful in an SMTP password and can make an
+# otherwise valid app password fail authentication.
+EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "").strip()
 EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "True").lower() in ("1", "true", "yes")
 EMAIL_USE_SSL = os.environ.get("EMAIL_USE_SSL", "False").lower() in ("1", "true", "yes")
 EMAIL_TIMEOUT = _env_int("EMAIL_TIMEOUT", 10)
-DEFAULT_FROM_EMAIL = _clean_email(
-    os.environ.get("DEFAULT_FROM_EMAIL", "LocalFix <no-reply@localfix.test>")
-)
+_configured_from_email = os.environ.get("DEFAULT_FROM_EMAIL", "").strip()
+_placeholder_from_domains = ("localhost", "localfix.test")
+if (
+    EMAIL_HOST_USER
+    and (
+        not _configured_from_email
+        or any(domain in _configured_from_email.lower() for domain in _placeholder_from_domains)
+    )
+):
+    # Gmail and most hosted relays reject or rewrite a sender that is not an
+    # authenticated/verified identity.  Keep local placeholders useful while
+    # making an otherwise complete production SMTP setup deliverable.
+    _configured_from_email = f"LocalFix <{EMAIL_HOST_USER}>"
+DEFAULT_FROM_EMAIL = _clean_email(_configured_from_email or "LocalFix <no-reply@localfix.test>")
 # Absolute base URL used in email links (set to your deployed domain in prod).
 SITE_BASE_URL = os.environ.get("SITE_BASE_URL", "http://127.0.0.1:8000")
 # Where contact-form messages are delivered.

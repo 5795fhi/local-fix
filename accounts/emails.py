@@ -6,6 +6,7 @@ All helpers are fire-safe — a failed send is logged and never breaks the
 request that triggered it.
 """
 import logging
+import smtplib
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -61,7 +62,25 @@ def send_templated_email(name, to_email, context, subject=None):
             reply_to=[_clean_address(a) for a in (REPLY_TO or [])],
         )
         message.attach_alternative(html_body, "text/html")
-        sent = message.send()
+        try:
+            sent = message.send()
+        except (smtplib.SMTPServerDisconnected, smtplib.SMTPConnectError,
+                TimeoutError, OSError) as exc:
+            # Some hosted SMTP relays drop an idle/serverless connection while
+            # AUTH is in progress.  Recreate the connection once; Django's
+            # EmailMessage opens a fresh backend connection for this retry.
+            logger.warning(
+                "SMTP connection dropped while sending %s to %s; retrying once: %s",
+                name, to_email, exc,
+            )
+            sent = message.send()
+    except smtplib.SMTPAuthenticationError:
+        logger.exception(
+            "SMTP authentication failed for %s. Check EMAIL_HOST_USER and use "
+            "a provider app password/API key (not a normal Gmail password).",
+            name,
+        )
+        return False
     except Exception:  # template, address or backend problem
         logger.exception("Failed to send %s email to %s", name, to_email)
         return False

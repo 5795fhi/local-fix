@@ -91,6 +91,8 @@ Thumbs.db
 # =========================
 *.docx
 LocalFix_Complete_Project_Generation_Guide_v2.docx
+output/
+tmp/
 
 
 .freebuff*
